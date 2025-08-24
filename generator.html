@@ -1,0 +1,2267 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MERN Stack Code Generator</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react@17/umd/react.development.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+    <style>
+      .code-block {
+        font-family: monospace;
+        white-space: pre;
+        tab-size: 4;
+        -moz-tab-size: 4;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+      .field-badge {
+        display: inline-flex;
+        align-items: center;
+        background-color: #edf2f7;
+        border-radius: 4px;
+        padding: 2px 8px;
+        margin: 4px;
+        font-size: 0.875rem;
+      }
+      .tab-button {
+        padding: 8px 16px;
+        border: none;
+        background: #f1f5f9;
+        cursor: pointer;
+        border-radius: 4px 4px 0 0;
+      }
+      .tab-button.active {
+        background: #3b82f6;
+        color: white;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-100 min-h-screen">
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const { useState, useEffect } = React;
+
+      const MERNGenerator = () => {
+        const [dbConnected, setDbConnected] = useState(false);
+        const [dbCredentials, setDbCredentials] = useState({
+          host: "localhost",
+          port: "27017",
+          database: "testdb",
+          username: "",
+          password: "",
+        });
+        const [models, setModels] = useState([]);
+        const [currentModel, setCurrentModel] = useState({
+          name: "",
+          fields: [],
+        });
+        const [newField, setNewField] = useState({
+          name: "",
+          type: "String",
+          required: false,
+          unique: false,
+          default: "",
+        });
+        const [generatedCode, setGeneratedCode] = useState({});
+        const [activeTab, setActiveTab] = useState("model");
+        const [includePagination, setIncludePagination] = useState(true);
+        const [includeValidation, setIncludeValidation] = useState(true);
+        const [selectedModelIndex, setSelectedModelIndex] = useState(-1);
+        const [includeAuth, setIncludeAuth] = useState(false);
+        const [authConfig, setAuthConfig] = useState({
+          jwtSecret: "your_jwt_secret_key_here",
+          jwtExpiresIn: "7d",
+          bcryptRounds: 10,
+          smtpHost: "smtp.gmail.com",
+          smtpPort: "587",
+          smtpUser: "your_email@gmail.com",
+          smtpPass: "your_app_password",
+          twilioSid: "your_twilio_sid",
+          twilioToken: "your_twilio_token",
+          twilioPhone: "your_twilio_phone_number",
+        });
+
+        const connectToDB = () => {
+          // Simulate DB connection
+          setTimeout(() => {
+            setDbConnected(true);
+            alert("Database connected successfully!");
+          }, 1000);
+        };
+
+        const handleInputChange = (e) => {
+          const { name, value } = e.target;
+          setDbCredentials({
+            ...dbCredentials,
+            [name]: value,
+          });
+        };
+
+        const handleAuthConfigChange = (e) => {
+          const { name, value } = e.target;
+          setAuthConfig({
+            ...authConfig,
+            [name]: value,
+          });
+        };
+
+        const addField = () => {
+          if (newField.name) {
+            setCurrentModel({
+              ...currentModel,
+              fields: [...currentModel.fields, { ...newField }],
+            });
+            setNewField({
+              name: "",
+              type: "String",
+              required: false,
+              unique: false,
+              default: "",
+            });
+          }
+        };
+
+        const removeField = (index) => {
+          const updatedFields = [...currentModel.fields];
+          updatedFields.splice(index, 1);
+          setCurrentModel({
+            ...currentModel,
+            fields: updatedFields,
+          });
+        };
+
+        const saveModel = () => {
+          if (currentModel.name && currentModel.fields.length > 0) {
+            if (selectedModelIndex >= 0) {
+              // Update existing model
+              const updatedModels = [...models];
+              updatedModels[selectedModelIndex] = currentModel;
+              setModels(updatedModels);
+            } else {
+              // Add new model
+              setModels([...models, currentModel]);
+            }
+
+            generateAllCode([...models, currentModel]);
+            setCurrentModel({
+              name: "",
+              fields: [],
+            });
+            setSelectedModelIndex(-1);
+            alert("Model saved successfully!");
+          } else {
+            alert("Please provide a model name and at least one field");
+          }
+        };
+
+        const editModel = (index) => {
+          setCurrentModel(models[index]);
+          setSelectedModelIndex(index);
+        };
+
+        const deleteModel = (index) => {
+          const updatedModels = [...models];
+          updatedModels.splice(index, 1);
+          setModels(updatedModels);
+          generateAllCode(updatedModels);
+          if (selectedModelIndex === index) {
+            setCurrentModel({
+              name: "",
+              fields: [],
+            });
+            setSelectedModelIndex(-1);
+          }
+        };
+
+        const generateConfigCode = () => {
+          return `const dotenv = require('dotenv');
+
+// Load environment variables based on NODE_ENV
+if (process.env.NODE_ENV === 'production') {
+  dotenv.config({ path: '.env.production' });
+} else {
+  dotenv.config({ path: '.env.development' });
+}
+
+module.exports = {
+  port: process.env.PORT || 5000,
+  database: {
+    host: process.env.DB_HOST || 'localhost',
+    port: process.env.DB_PORT || 27017,
+    name: process.env.DB_NAME || 'testdb',
+    username: process.env.DB_USERNAME || '',
+    password: process.env.DB_PASSWORD || '',
+    uri: process.env.DB_URI || \`mongodb://\${process.env.DB_HOST || 'localhost'}:\${process.env.DB_PORT || 27017}/\${process.env.DB_NAME || 'testdb'}\`
+  },
+  jwt: {
+    secret: process.env.JWT_SECRET || 'your_jwt_secret_key_here',
+    expiresIn: process.env.JWT_EXPIRES_IN || '7d'
+  },
+  bcrypt: {
+    rounds: parseInt(process.env.BCRYPT_ROUNDS) || 10
+  },
+  email: {
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: process.env.SMTP_PORT || 587,
+    user: process.env.SMTP_USER || 'your_email@gmail.com',
+    pass: process.env.SMTP_PASS || 'your_app_password'
+  },
+  sms: {
+    sid: process.env.TWILIO_SID || 'your_twilio_sid',
+    token: process.env.TWILIO_TOKEN || 'your_twilio_token',
+    phone: process.env.TWILIO_PHONE || 'your_twilio_phone_number'
+  }
+};`;
+        };
+
+        const generateDbCode = () => {
+          return `const mongoose = require('mongoose');
+const config = require('../config');
+
+const connectDB = async () => {
+  try {
+    const conn = await mongoose.connect(config.database.uri, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+
+    console.log(\`MongoDB Connected: \${conn.connection.host}\`);
+  } catch (error) {
+    console.error(\`Error: \${error.message}\`);
+    process.exit(1);
+  }
+};
+
+module.exports = connectDB;`;
+        };
+
+        const generateEnvFiles = () => {
+          const envDevelopment = `# Database
+DB_HOST=localhost
+DB_PORT=27017
+DB_NAME=testdb
+DB_USERNAME=
+DB_PASSWORD=
+DB_URI=mongodb://localhost:27017/testdb
+
+# JWT
+JWT_SECRET=your_jwt_secret_key_here
+JWT_EXPIRES_IN=7d
+
+# Bcrypt
+BCRYPT_ROUNDS=10
+
+# Email (SMTP)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_app_password
+
+# SMS (Twilio)
+TWILIO_SID=your_twilio_sid
+TWILIO_TOKEN=your_twilio_token
+TWILIO_PHONE=your_twilio_phone_number
+
+# Server
+PORT=5000
+NODE_ENV=development`;
+
+          const envProduction = `# Database
+DB_HOST=your_production_host
+DB_PORT=27017
+DB_NAME=your_production_db
+DB_USERNAME=your_production_username
+DB_PASSWORD=your_production_password
+DB_URI=your_production_mongodb_uri
+
+# JWT
+JWT_SECRET=your_strong_jwt_secret_key_here
+JWT_EXPIRES_IN=7d
+
+# Bcrypt
+BCRYPT_ROUNDS=12
+
+# Email (SMTP)
+SMTP_HOST=your_production_smtp_host
+SMTP_PORT=587
+SMTP_USER=your_production_email
+SMTP_PASS=your_production_app_password
+
+# SMS (Twilio)
+TWILIO_SID=your_production_twilio_sid
+TWILIO_TOKEN=your_production_twilio_token
+TWILIO_PHONE=your_production_twilio_phone_number
+
+# Server
+PORT=5000
+NODE_ENV=production`;
+
+          const envSample = `# Database
+DB_HOST=localhost
+DB_PORT=27017
+DB_NAME=testdb
+DB_USERNAME=
+DB_PASSWORD=
+DB_URI=mongodb://localhost:27017/testdb
+
+# JWT
+JWT_SECRET=your_jwt_secret_key_here
+JWT_EXPIRES_IN=7d
+
+# Bcrypt
+BCRYPT_ROUNDS=10
+
+# Email (SMTP)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_app_password
+
+# SMS (Twilio)
+TWILIO_SID=your_twilio_sid
+TWILIO_TOKEN=your_twilio_token
+TWILIO_PHONE=your_twilio_phone_number
+
+# Server
+PORT=5000
+NODE_ENV=development`;
+
+          return { envDevelopment, envProduction, envSample };
+        };
+
+        const generateUtilsCode = () => {
+          const bcryptUtils = `const bcrypt = require('bcrypt');
+const config = require('../config');
+
+// Hash password
+const hashPassword = async (password) => {
+  try {
+    const saltRounds = config.bcrypt.rounds;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    return hashedPassword;
+  } catch (error) {
+    throw new Error('Error hashing password');
+  }
+};
+
+// Compare password
+const comparePassword = async (password, hashedPassword) => {
+  try {
+    const isMatch = await bcrypt.compare(password, hashedPassword);
+    return isMatch;
+  } catch (error) {
+    throw new Error('Error comparing passwords');
+  }
+};
+
+module.exports = {
+  hashPassword,
+  comparePassword
+};`;
+
+          const emailUtils = `const nodemailer = require('nodemailer');
+const config = require('../config');
+
+// Create transporter
+const transporter = nodemailer.createTransporter({
+  host: config.email.host,
+  port: config.email.port,
+  secure: false, // true for 465, false for other ports
+  auth: {
+    user: config.email.user,
+    pass: config.email.pass,
+  },
+});
+
+// Send email
+const sendEmail = async (to, subject, html) => {
+  try {
+    const info = await transporter.sendMail({
+      from: \`"Your App" <\${config.email.user}>\`,
+      to,
+      subject,
+      html,
+    });
+
+    console.log('Message sent: %s', info.messageId);
+    return true;
+  } catch (error) {
+    console.error('Error sending email:', error);
+    return false;
+  }
+};
+
+// Send verification email
+const sendVerificationEmail = async (to, token) => {
+  const verificationUrl = \`http://yourdomain.com/verify-email?token=\${token}\`;
+  const subject = 'Verify Your Email Address';
+  const html = \`
+    <div>
+      <h2>Email Verification</h2>
+      <p>Please click the link below to verify your email address:</p>
+      <a href="\${verificationUrl}">Verify Email</a>
+      <p>If you did not create an account, please ignore this email.</p>
+    </div>
+  \`;
+
+  return await sendEmail(to, subject, html);
+};
+
+// Send password reset email
+const sendPasswordResetEmail = async (to, token) => {
+  const resetUrl = \`http://yourdomain.com/reset-password?token=\${token}\`;
+  const subject = 'Reset Your Password';
+  const html = \`
+    <div>
+      <h2>Password Reset</h2>
+      <p>Please click the link below to reset your password:</p>
+      <a href="\${resetUrl}">Reset Password</a>
+      <p>If you did not request a password reset, please ignore this email.</p>
+    </div>
+  \`;
+
+  return await sendEmail(to, subject, html);
+};
+
+module.exports = {
+  sendEmail,
+  sendVerificationEmail,
+  sendPasswordResetEmail
+};`;
+
+          const smsUtils = `const twilio = require('twilio');
+const config = require('../config');
+
+const client = twilio(config.sms.sid, config.sms.token);
+
+// Send SMS
+const sendSMS = async (to, message) => {
+  try {
+    const result = await client.messages.create({
+      body: message,
+      from: config.sms.phone,
+      to: to
+    });
+
+    console.log('SMS sent: %s', result.sid);
+    return true;
+  } catch (error) {
+    console.error('Error sending SMS:', error);
+    return false;
+  }
+};
+
+// Send verification SMS
+const sendVerificationSMS = async (to, code) => {
+  const message = \`Your verification code is: \${code}. This code will expire in 10 minutes.\`;
+  return await sendSMS(to, message);
+};
+
+// Send OTP
+const sendOTP = async (to, otp) => {
+  const message = \`Your OTP is: \${otp}. This OTP will expire in 10 minutes.\`;
+  return await sendSMS(to, message);
+};
+
+module.exports = {
+  sendSMS,
+  sendVerificationSMS,
+  sendOTP
+};`;
+
+          const otpUtils = `// Generate OTP
+const generateOTP = (length = 6) => {
+  let otp = '';
+  const digits = '0123456789';
+  
+  for (let i = 0; i < length; i++) {
+    otp += digits[Math.floor(Math.random() * 10)];
+  }
+  
+  return otp;
+};
+
+// Generate token
+const generateToken = (length = 32) => {
+  let token = '';
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  
+  for (let i = 0; i < length; i++) {
+    token += chars[Math.floor(Math.random() * chars.length)];
+  }
+  
+  return token;
+};
+
+// Check if OTP is expired
+const isOTPExpired = (createdAt, expiresInMinutes = 10) => {
+  const now = new Date();
+  const created = new Date(createdAt);
+  const diffInMinutes = (now - created) / (1000 * 60);
+  
+  return diffInMinutes > expiresInMinutes;
+};
+
+module.exports = {
+  generateOTP,
+  generateToken,
+  isOTPExpired
+};`;
+
+          return { bcryptUtils, emailUtils, smsUtils, otpUtils };
+        };
+
+        const generateAuthModels = () => {
+          const userModel = `const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
+const { hashPassword } = require('../utils/bcryptUtils');
+
+const userSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    lowercase: true,
+    trim: true
+  },
+  password: {
+    type: String,
+    required: true,
+    minlength: 6
+  },
+  phone: {
+    type: String,
+    trim: true
+  },
+  isEmailVerified: {
+    type: Boolean,
+    default: false
+  },
+  isPhoneVerified: {
+    type: Boolean,
+    default: false
+  },
+  avatar: {
+    type: String,
+    default: ''
+  },
+  role: {
+    type: String,
+    enum: ['user', 'admin'],
+    default: 'user'
+  },
+  status: {
+    type: String,
+    enum: ['active', 'inactive', 'suspended'],
+    default: 'active'
+  },
+  lastLogin: {
+    type: Date
+  }
+}, { 
+  timestamps: true 
+});
+
+// Hash password before saving
+userSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next();
+  
+  try {
+    this.password = await hashPassword(this.password);
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Compare password method
+userSchema.methods.comparePassword = async function(password) {
+  try {
+    const bcrypt = require('bcrypt');
+    return await bcrypt.compare(password, this.password);
+  } catch (error) {
+    throw new Error(error);
+  }
+};
+
+// Remove password from JSON output
+userSchema.methods.toJSON = function() {
+  const user = this.toObject();
+  delete user.password;
+  return user;
+};
+
+module.exports = mongoose.model('User', userSchema);`;
+
+          const otpModel = `const mongoose = require('mongoose');
+
+const otpSchema = new mongoose.Schema({
+  email: {
+    type: String,
+    required: true
+  },
+  phone: {
+    type: String
+  },
+  otp: {
+    type: String,
+    required: true
+  },
+  type: {
+    type: String,
+    enum: ['email-verification', 'phone-verification', 'password-reset', '2fa'],
+    required: true
+  },
+  expiresAt: {
+    type: Date,
+    required: true
+  },
+  used: {
+    type: Boolean,
+    default: false
+  }
+}, { 
+  timestamps: true 
+});
+
+// Index for automatic expiration
+otpSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
+module.exports = mongoose.model('OTP', otpSchema);`;
+
+          return { userModel, otpModel };
+        };
+
+        const generateAuthControllers = () => {
+          const authController = `const User = require('../models/User');
+const OTP = require('../models/OTP');
+const { generateOTP, generateToken } = require('../utils/otpUtils');
+const { comparePassword } = require('../utils/bcryptUtils');
+const { sendVerificationEmail, sendPasswordResetEmail } = require('../utils/emailUtils');
+const { sendVerificationSMS, sendOTP } = require('../utils/smsUtils');
+const jwt = require('jsonwebtoken');
+const config = require('../config');
+
+// Generate JWT token
+const generateAuthToken = (user) => {
+  return jwt.sign(
+    { 
+      userId: user._id,
+      email: user.email,
+      role: user.role 
+    },
+    config.jwt.secret,
+    { expiresIn: config.jwt.expiresIn }
+  );
+};
+
+// Register user
+exports.register = async (req, res) => {
+  try {
+    const { name, email, password, phone } = req.body;
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.badRequest('User with this email already exists');
+    }
+
+    // Create user
+    const user = new User({ name, email, password, phone });
+    await user.save();
+
+    // Generate email verification OTP
+    const otp = generateOTP();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    await OTP.create({
+      email,
+      otp,
+      type: 'email-verification',
+      expiresAt
+    });
+
+    // Send verification email
+    await sendVerificationEmail(email, otp);
+
+    // Generate token
+    const token = generateAuthToken(user);
+
+    // Remove password from response
+    const userResponse = user.toJSON();
+
+    res.successResponse(
+      { user: userResponse, token },
+      'User registered successfully. Please check your email for verification.'
+    );
+  } catch (error) {
+    res.serverError(error.message);
+  }
+};
+
+// Login user
+exports.login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Find user
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.badRequest('Invalid email or password');
+    }
+
+    // Check password
+    const isPasswordValid = await comparePassword(password, user.password);
+    if (!isPasswordValid) {
+      return res.badRequest('Invalid email or password');
+    }
+
+    // Check if account is active
+    if (user.status !== 'active') {
+      return res.badRequest('Your account is not active. Please contact support.');
+    }
+
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save();
+
+    // Generate token
+    const token = generateAuthToken(user);
+
+    // Remove password from response
+    const userResponse = user.toJSON();
+
+    res.successResponse(
+      { user: userResponse, token },
+      'Login successful'
+    );
+  } catch (error) {
+    res.serverError(error.message);
+  }
+};
+
+// Verify email
+exports.verifyEmail = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    // Find OTP record
+    const otpRecord = await OTP.findOne({
+      email,
+      otp,
+      type: 'email-verification',
+      used: false,
+      expiresAt: { $gt: new Date() }
+    });
+
+    if (!otpRecord) {
+      return res.badRequest('Invalid or expired OTP');
+    }
+
+    // Update user
+    await User.findOneAndUpdate(
+      { email },
+      { isEmailVerified: true }
+    );
+
+    // Mark OTP as used
+    otpRecord.used = true;
+    await otpRecord.save();
+
+    res.successResponse(null, 'Email verified successfully');
+  } catch (error) {
+    res.serverError(error.message);
+  }
+};
+
+// Forgot password
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Find user
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.successResponse(null, 'If the email exists, a password reset link has been sent');
+    }
+
+    // Generate OTP
+    const otp = generateOTP();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Save OTP
+    await OTP.create({
+      email,
+      otp,
+      type: 'password-reset',
+      expiresAt
+    });
+
+    // Send password reset email
+    await sendPasswordResetEmail(email, otp);
+
+    res.successResponse(null, 'If the email exists, a password reset link has been sent');
+  } catch (error) {
+    res.serverError(error.message);
+  }
+};
+
+// Reset password
+exports.resetPassword = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    // Find OTP record
+    const otpRecord = await OTP.findOne({
+      email,
+      otp,
+      type: 'password-reset',
+      used: false,
+      expiresAt: { $gt: new Date() }
+    });
+
+    if (!otpRecord) {
+      return res.badRequest('Invalid or expired OTP');
+    }
+
+    // Update user password
+    const user = await User.findOne({ email });
+    user.password = newPassword;
+    await user.save();
+
+    // Mark OTP as used
+    otpRecord.used = true;
+    await otpRecord.save();
+
+    res.successResponse(null, 'Password reset successfully');
+  } catch (error) {
+    res.serverError(error.message);
+  }
+};
+
+// Get current user profile
+exports.getProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    res.successResponse({ user }, 'Profile retrieved successfully');
+  } catch (error) {
+    res.serverError(error.message);
+  }
+};
+
+// Update profile
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, phone, avatar } = req.body;
+    
+    const user = await User.findByIdAndUpdate(
+      req.userId,
+      { name, phone, avatar },
+      { new: true, runValidators: true }
+    );
+
+    res.successResponse({ user }, 'Profile updated successfully');
+  } catch (error) {
+    res.serverError(error.message);
+  }
+};
+
+// Change password
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    // Find user
+    const user = await User.findById(req.userId);
+    
+    // Check current password
+    const isCurrentPasswordValid = await comparePassword(currentPassword, user.password);
+    if (!isCurrentPasswordValid) {
+      return res.badRequest('Current password is incorrect');
+    }
+
+    // Update password
+    user.password = newPassword;
+    await user.save();
+
+    res.successResponse(null, 'Password changed successfully');
+  } catch (error) {
+    res.serverError(error.message);
+  }
+};
+
+// Logout (client-side token removal)
+exports.logout = async (req, res) => {
+  try {
+    // In a stateless JWT system, logout is handled client-side by removing the token
+    // You might want to implement token blacklisting if needed
+    res.successResponse(null, 'Logged out successfully');
+  } catch (error) {
+    res.serverError(error.message);
+  }
+};`;
+
+          return { authController };
+        };
+
+        const generateAuthRoutes = () => {
+          return `const express = require('express');
+const router = express.Router();
+const authController = require('../controllers/authController');
+const { authenticateToken } = require('../middlewares/authMiddleware');
+const { validateRegistration, validateLogin, validateForgotPassword, validateResetPassword, validateChangePassword } = require('../validators/authValidator');
+
+// Public routes
+router.post('/register', validateRegistration, authController.register);
+router.post('/login', validateLogin, authController.login);
+router.post('/verify-email', authController.verifyEmail);
+router.post('/forgot-password', validateForgotPassword, authController.forgotPassword);
+router.post('/reset-password', validateResetPassword, authController.resetPassword);
+
+// Protected routes
+router.get('/profile', authenticateToken, authController.getProfile);
+router.put('/profile', authenticateToken, authController.updateProfile);
+router.post('/change-password', authenticateToken, validateChangePassword, authController.changePassword);
+router.post('/logout', authenticateToken, authController.logout);
+
+module.exports = router;`;
+        };
+
+        const generateAuthMiddleware = () => {
+          return `const jwt = require('jsonwebtoken');
+const config = require('../config');
+const User = require('../models/User');
+
+// Authenticate JWT token
+const authenticateToken = async (req, res, next) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+    if (!token) {
+      return res.tokenserverError('Access token required');
+    }
+
+    const decoded = jwt.verify(token, config.jwt.secret);
+    const user = await User.findById(decoded.userId).select('-password');
+    
+    if (!user) {
+      return res.tokenserverError('Invalid token');
+    }
+
+    if (user.status !== 'active') {
+      return res.tokenserverError('Account is not active');
+    }
+
+    req.userId = user._id;
+    req.user = user;
+    next();
+  } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      return res.tokenserverError('Token expired');
+    }
+    if (error.name === 'JsonWebTokenError') {
+      return res.tokenserverError('Invalid token');
+    }
+    res.tokenserverError('Authentication failed');
+  }
+};
+
+// Check if user has required role
+const requireRole = (roles) => {
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      return res.tokenserverError('Insufficient permissions');
+    }
+    next();
+  };
+};
+
+module.exports = {
+  authenticateToken,
+  requireRole
+};`;
+        };
+
+        const generateAuthValidators = () => {
+          return `const { body } = require('express-validator');
+
+// Registration validation
+const validateRegistration = [
+  body('name')
+    .notEmpty().withMessage('Name is required')
+    .isLength({ min: 2, max: 50 }).withMessage('Name must be between 2 and 50 characters')
+    .trim(),
+  
+  body('email')
+    .notEmpty().withMessage('Email is required')
+    .isEmail().withMessage('Please provide a valid email')
+    .normalizeEmail(),
+  
+  body('password')
+    .notEmpty().withMessage('Password is required')
+    .isLength({ min: 6 }).withMessage('Password must be at least 6 characters long')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Password must contain at least one lowercase letter, one uppercase letter, and one number'),
+  
+  body('phone')
+    .optional()
+    .isMobilePhone().withMessage('Please provide a valid phone number')
+];
+
+// Login validation
+const validateLogin = [
+  body('email')
+    .notEmpty().withMessage('Email is required')
+    .isEmail().withMessage('Please provide a valid email')
+    .normalizeEmail(),
+  
+  body('password')
+    .notEmpty().withMessage('Password is required')
+];
+
+// Forgot password validation
+const validateForgotPassword = [
+  body('email')
+    .notEmpty().withMessage('Email is required')
+    .isEmail().withMessage('Please provide a valid email')
+    .normalizeEmail()
+];
+
+// Reset password validation
+const validateResetPassword = [
+  body('email')
+    .notEmpty().withMessage('Email is required')
+    .isEmail().withMessage('Please provide a valid email')
+    .normalizeEmail(),
+  
+  body('otp')
+    .notEmpty().withMessage('OTP is required')
+    .isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits')
+    .isNumeric().withMessage('OTP must contain only numbers'),
+  
+  body('newPassword')
+    .notEmpty().withMessage('New password is required')
+    .isLength({ min: 6 }).withMessage('Password must be at least 6 characters long')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Password must contain at least one lowercase letter, one uppercase letter, and one number')
+];
+
+// Change password validation
+const validateChangePassword = [
+  body('currentPassword')
+    .notEmpty().withMessage('Current password is required'),
+  
+  body('newPassword')
+    .notEmpty().withMessage('New password is required')
+    .isLength({ min: 6 }).withMessage('Password must be at least 6 characters long')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Password must contain at least one lowercase letter, one uppercase letter, and one number')
+];
+
+module.exports = {
+  validateRegistration,
+  validateLogin,
+  validateForgotPassword,
+  validateResetPassword,
+  validateChangePassword
+};`;
+        };
+
+        const generateResponseMiddleware = () => {
+          return `const responseMiddleware = (req, res, next) => {
+  res.successResponse = (data, message = "Request successful") => {
+    res.status(200).json({
+      success: true,
+      message,
+      data,
+    });
+  };
+
+  res.badRequest = (error, message = "Bad Request") => {
+    res.status(400).json({
+      success: false,
+      message,
+      error,
+    });
+  };
+
+  res.notFound = (error, message = "Not Found") => {
+    res.status(404).json({
+      success: false,
+      message,
+      error,
+    });
+  };
+
+  res.validationError = (error, message = "Validation Error") => {
+    res.status(422).json({
+      success: false,
+      message,
+      error,
+    });
+  };
+
+  res.serverError = (error, message = "Internal Server Error") => {
+    res.status(500).json({
+      success: false,
+      message,
+      error,
+    });
+  };
+
+  res.tokenvalidationError = (errors) => {
+    res.status(401).json({
+      success: false,
+      message: "Validation Error",
+      errors,
+    });
+  };
+  
+  res.tokenserverError = (err, message = "Internal Server Error") => {
+    res.status(401).json({
+      success: false,
+      message,
+      errors: err,
+    });
+  };
+
+  next();
+};
+
+module.exports = responseMiddleware;`;
+        };
+
+        const generateModelCode = (model) => {
+          let modelCode = `const mongoose = require('mongoose');\n\n`;
+          modelCode += `const ${model.name.toLowerCase()}Schema = new mongoose.Schema({\n`;
+
+          model.fields.forEach((field) => {
+            const fieldProps = {};
+            fieldProps.type =
+              field.type === "ObjectId"
+                ? `mongoose.Schema.Types.${field.type}`
+                : field.type;
+
+            if (field.required) fieldProps.required = field.required;
+            if (field.unique) fieldProps.unique = field.unique;
+            if (field.default) {
+              if (field.type === "String") {
+                fieldProps.default = `"${field.default}"`;
+              } else if (field.type === "Boolean") {
+                fieldProps.default = field.default.toLowerCase();
+              } else {
+                fieldProps.default = field.default;
+              }
+            }
+
+            const propsString = Object.entries(fieldProps)
+              .map(
+                ([key, value]) =>
+                  `${key}: ${
+                    typeof value === "string" &&
+                    key !== "type" &&
+                    !value.includes("mongoose.Schema.Types")
+                      ? `"${value}"`
+                      : value
+                  }`
+              )
+              .join(", ");
+
+            modelCode += `    ${field.name}: { ${propsString} },\n`;
+          });
+
+          modelCode += `}, { timestamps: true });\n\n`;
+          modelCode += `module.exports = mongoose.model('${
+            model.name
+          }', ${model.name.toLowerCase()}Schema);`;
+
+          return modelCode;
+        };
+
+        const generateControllerCode = (model) => {
+          let controllerCode = `const ${model.name} = require('../models/${model.name}');\n`;
+
+          if (includeValidation) {
+            controllerCode += `const { validationResult } = require('express-validator');\n`;
+            controllerCode += `const validate${
+              model.name
+            } = require('../validators/${model.name.toLowerCase()}Validator');\n`;
+          }
+
+          controllerCode += `\n`;
+
+          // Create function
+          controllerCode += `// Create a new ${model.name.toLowerCase()}\n`;
+          controllerCode += `exports.create${model.name} = [`;
+
+          if (includeValidation) {
+            controllerCode += `validate${model.name}, `;
+          }
+
+          controllerCode += `async (req, res) => {\n`;
+
+          if (includeValidation) {
+            controllerCode += `    const errors = validationResult(req);\n`;
+            controllerCode += `    if (!errors.isEmpty()) {\n`;
+            controllerCode += `        return res.validationError(errors.array());\n`;
+            controllerCode += `    }\n\n`;
+          }
+
+          controllerCode += `    try {\n`;
+          controllerCode += `        const ${model.name.toLowerCase()} = new ${
+            model.name
+          }(req.body);\n`;
+          controllerCode += `        await ${model.name.toLowerCase()}.save();\n`;
+          controllerCode += `        res.successResponse(${model.name.toLowerCase()}, '${
+            model.name
+          } created successfully');\n`;
+          controllerCode += `    } catch (error) {\n`;
+          controllerCode += `        res.serverError(error.message);\n`;
+          controllerCode += `    }\n`;
+          controllerCode += `}];\n\n`;
+
+          // Get all function with pagination
+          controllerCode += `// Get all ${model.name.toLowerCase()}s\n`;
+          controllerCode += `exports.get${model.name}s = async (req, res) => {\n`;
+          controllerCode += `    try {\n`;
+          controllerCode += `        const page = parseInt(req.query.page) || 1;\n`;
+          controllerCode += `        const limit = parseInt(req.query.limit) || 10;\n`;
+          controllerCode += `        const skip = (page - 1) * limit;\n\n`;
+          controllerCode += `        const ${model.name.toLowerCase()}s = await ${
+            model.name
+          }.find()\n`;
+          controllerCode += `            .skip(skip)\n`;
+          controllerCode += `            .limit(limit);\n\n`;
+          controllerCode += `        const total = await ${model.name}.countDocuments();\n`;
+          controllerCode += `        const totalPages = Math.ceil(total / limit);\n\n`;
+          controllerCode += `        res.successResponse({\n`;
+          controllerCode += `            ${model.name.toLowerCase()}s,\n`;
+          controllerCode += `            pagination: {\n`;
+          controllerCode += `                currentPage: page,\n`;
+          controllerCode += `                totalPages,\n`;
+          controllerCode += `                totalItems: total,\n`;
+          controllerCode += `                itemsPerPage: limit\n`;
+          controllerCode += `            }\n`;
+          controllerCode += `        });\n`;
+          controllerCode += `    } catch (error) {\n`;
+          controllerCode += `        res.serverError(error.message);\n`;
+          controllerCode += `    }\n`;
+          controllerCode += `};\n\n`;
+
+          // Get by ID function
+          controllerCode += `// Get a single ${model.name.toLowerCase()} by ID\n`;
+          controllerCode += `exports.get${model.name}ById = async (req, res) => {\n`;
+          controllerCode += `    try {\n`;
+          controllerCode += `        const ${model.name.toLowerCase()} = await ${
+            model.name
+          }.findById(req.params.id);\n`;
+          controllerCode += `        if (!${model.name.toLowerCase()}) {\n`;
+          controllerCode += `            return res.notFound('${model.name} not found');\n`;
+          controllerCode += `        }\n`;
+          controllerCode += `        res.successResponse(${model.name.toLowerCase()});\n`;
+          controllerCode += `    } catch (error) {\n`;
+          controllerCode += `        res.serverError(error.message);\n`;
+          controllerCode += `    }\n`;
+          controllerCode += `};\n\n`;
+
+          // Update function
+          controllerCode += `// Update a ${model.name.toLowerCase()} by ID\n`;
+          controllerCode += `exports.update${model.name} = [`;
+
+          if (includeValidation) {
+            controllerCode += `validate${model.name}, `;
+          }
+
+          controllerCode += `async (req, res) => {\n`;
+
+          if (includeValidation) {
+            controllerCode += `    const errors = validationResult(req);\n`;
+            controllerCode += `    if (!errors.isEmpty()) {\n`;
+            controllerCode += `        return res.validationError(errors.array());\n`;
+            controllerCode += `    }\n\n`;
+          }
+
+          controllerCode += `    try {\n`;
+          controllerCode += `        const ${model.name.toLowerCase()} = await ${
+            model.name
+          }.findByIdAndUpdate(\n`;
+          controllerCode += `            req.params.id,\n`;
+          controllerCode += `            req.body,\n`;
+          controllerCode += `            { new: true, runValidators: true }\n`;
+          controllerCode += `        );\n`;
+          controllerCode += `        if (!${model.name.toLowerCase()}) {\n`;
+          controllerCode += `            return res.notFound('${model.name} not found');\n`;
+          controllerCode += `        }\n`;
+          controllerCode += `        res.successResponse(${model.name.toLowerCase()}, '${
+            model.name
+          } updated successfully');\n`;
+          controllerCode += `    } catch (error) {\n`;
+          controllerCode += `        res.serverError(error.message);\n`;
+          controllerCode += `    }\n`;
+          controllerCode += `}];\n\n`;
+
+          // Delete function
+          controllerCode += `// Delete a ${model.name.toLowerCase()} by ID\n`;
+          controllerCode += `exports.delete${model.name} = async (req, res) => {\n`;
+          controllerCode += `    try {\n`;
+          controllerCode += `        const ${model.name.toLowerCase()} = await ${
+            model.name
+          }.findByIdAndDelete(req.params.id);\n`;
+          controllerCode += `        if (!${model.name.toLowerCase()}) {\n`;
+          controllerCode += `            return res.notFound('${model.name} not found');\n`;
+          controllerCode += `        }\n`;
+          controllerCode += `        res.successResponse(null, '${model.name} deleted successfully');\n`;
+          controllerCode += `    } catch (error) {\n`;
+          controllerCode += `        res.serverError(error.message);\n`;
+          controllerCode += `    }\n`;
+          controllerCode += `};\n`;
+
+          return controllerCode;
+        };
+
+        const generateRoutesCode = (model) => {
+          let routesCode = `const express = require('express');\n`;
+          routesCode += `const router = express.Router();\n`;
+          routesCode += `const ${model.name.toLowerCase()}Controller = require('../controllers/${model.name.toLowerCase()}Controller');\n`;
+
+          if (includeAuth) {
+            routesCode += `const { authenticateToken } = require('../middlewares/authMiddleware');\n`;
+          }
+
+          routesCode += `\n`;
+          routesCode += `// ${model.name} routes\n`;
+
+          if (includeAuth) {
+            routesCode += `router.post('/', authenticateToken, ${model.name.toLowerCase()}Controller.create${
+              model.name
+            });\n`;
+            routesCode += `router.get('/', authenticateToken, ${model.name.toLowerCase()}Controller.get${
+              model.name
+            }s);\n`;
+            routesCode += `router.get('/:id', authenticateToken, ${model.name.toLowerCase()}Controller.get${
+              model.name
+            }ById);\n`;
+            routesCode += `router.put('/:id', authenticateToken, ${model.name.toLowerCase()}Controller.update${
+              model.name
+            });\n`;
+            routesCode += `router.delete('/:id', authenticateToken, ${model.name.toLowerCase()}Controller.delete${
+              model.name
+            });\n`;
+          } else {
+            routesCode += `router.post('/', ${model.name.toLowerCase()}Controller.create${
+              model.name
+            });\n`;
+            routesCode += `router.get('/', ${model.name.toLowerCase()}Controller.get${
+              model.name
+            }s);\n`;
+            routesCode += `router.get('/:id', ${model.name.toLowerCase()}Controller.get${
+              model.name
+            }ById);\n`;
+            routesCode += `router.put('/:id', ${model.name.toLowerCase()}Controller.update${
+              model.name
+            });\n`;
+            routesCode += `router.delete('/:id', ${model.name.toLowerCase()}Controller.delete${
+              model.name
+            });\n`;
+          }
+
+          routesCode += `\n`;
+          routesCode += `module.exports = router;\n`;
+
+          return routesCode;
+        };
+
+        const generateValidatorCode = (model) => {
+          let validatorCode = `const { body } = require('express-validator');\n\n`;
+          validatorCode += `const validate${model.name} = [\n`;
+
+          model.fields.forEach((field) => {
+            if (field.required) {
+              validatorCode += `    body('${field.name}')\n`;
+              validatorCode += `        .notEmpty().withMessage('${field.name} is required')\n`;
+
+              if (field.type === "String") {
+                validatorCode += `        .isString().withMessage('${field.name} must be a string')\n`;
+              } else if (field.type === "Number") {
+                validatorCode += `        .isNumeric().withMessage('${field.name} must be a number')\n`;
+              } else if (field.type === "Boolean") {
+                validatorCode += `        .isBoolean().withMessage('${field.name} must be a boolean')\n`;
+              } else if (field.type === "Date") {
+                validatorCode += `        .isISO8601().withMessage('${field.name} must be a valid date')\n`;
+              }
+
+              validatorCode += `        .trim(),\n`;
+            }
+          });
+
+          validatorCode += `];\n\n`;
+          validatorCode += `module.exports = validate${model.name};\n`;
+
+          return validatorCode;
+        };
+
+        const generateAllCode = (modelsList) => {
+          const modelCodes = {};
+          const controllerCodes = {};
+          const routesCodes = {};
+          const validatorCodes = {};
+          const configCode = generateConfigCode();
+          const dbCode = generateDbCode();
+          const envFiles = generateEnvFiles();
+          const utilsCode = generateUtilsCode();
+          const authModels = generateAuthModels();
+          const authControllers = generateAuthControllers();
+          const authRoutes = generateAuthRoutes();
+          const authMiddleware = generateAuthMiddleware();
+          const authValidators = generateAuthValidators();
+
+          modelsList.forEach((model) => {
+            modelCodes[model.name] = generateModelCode(model);
+            controllerCodes[model.name] = generateControllerCode(model);
+            routesCodes[model.name] = generateRoutesCode(model);
+
+            if (includeValidation) {
+              validatorCodes[model.name] = generateValidatorCode(model);
+            }
+          });
+
+          // Generate mounting code
+          let mountingCode = `const express = require('express');\n`;
+          mountingCode += `const app = express();\n`;
+          mountingCode += `const config = require('./config');\n`;
+          mountingCode += `const connectDB = require('./database/db');\n`;
+          mountingCode += `const responseMiddleware = require('./middlewares/responseMiddleware');\n`;
+
+          modelsList.forEach((model) => {
+            mountingCode += `const ${model.name.toLowerCase()}Routes = require('./routes/${model.name.toLowerCase()}Routes');\n`;
+          });
+
+          if (includeAuth) {
+            mountingCode += `const authRoutes = require('./routes/authRoutes');\n`;
+          }
+
+          mountingCode += `\n`;
+          mountingCode += `// Connect to database\n`;
+          mountingCode += `connectDB();\n\n`;
+          mountingCode += `// Middleware\n`;
+          mountingCode += `app.use(express.json());\n`;
+          mountingCode += `app.use(responseMiddleware);\n\n`;
+          mountingCode += `// Routes\n`;
+
+          if (includeAuth) {
+            mountingCode += `app.use('/api/auth', authRoutes);\n`;
+          }
+
+          modelsList.forEach((model) => {
+            mountingCode += `app.use('/api/${model.name.toLowerCase()}s', ${model.name.toLowerCase()}Routes);\n`;
+          });
+
+          mountingCode += `\n`;
+          mountingCode += `const PORT = config.port || 5000;\n`;
+          mountingCode += `app.listen(PORT, () => {\n`;
+          mountingCode += `    console.log(\`Server running on port \${PORT}\`);\n`;
+          mountingCode += `});\n`;
+
+          setGeneratedCode({
+            models: modelCodes,
+            controllers: controllerCodes,
+            routes: routesCodes,
+            mounting: mountingCode,
+            middleware: generateResponseMiddleware(),
+            validators: validatorCodes,
+            config: configCode,
+            db: dbCode,
+            envFiles,
+            utils: utilsCode,
+            authModels,
+            authControllers,
+            authRoutes,
+            authMiddleware,
+            authValidators,
+          });
+        };
+
+        const copyToClipboard = (text) => {
+          navigator.clipboard
+            .writeText(text)
+            .then(() => alert("Code copied to clipboard!"))
+            .catch((err) => console.error("Error copying text: ", err));
+        };
+
+        const exportBackend = () => {
+          if (models.length === 0 && !includeAuth) {
+            alert(
+              "Please create at least one model or enable authentication before exporting"
+            );
+            return;
+          }
+
+          // Create a zip file with all the backend code
+          const zip = new JSZip();
+
+          // Add config
+          zip.file("config.js", generatedCode.config);
+
+          // Add database
+          const databaseFolder = zip.folder("database");
+          databaseFolder.file("db.js", generatedCode.db);
+
+          // Add models
+          const modelsFolder = zip.folder("models");
+          Object.entries(generatedCode.models).forEach(([modelName, code]) => {
+            modelsFolder.file(`${modelName}.js`, code);
+          });
+
+          // Add auth models if enabled
+          if (includeAuth) {
+            modelsFolder.file("User.js", generatedCode.authModels.userModel);
+            modelsFolder.file("OTP.js", generatedCode.authModels.otpModel);
+          }
+
+          // Add controllers
+          const controllersFolder = zip.folder("controllers");
+          Object.entries(generatedCode.controllers).forEach(
+            ([modelName, code]) => {
+              controllersFolder.file(`${modelName}Controller.js`, code);
+            }
+          );
+
+          // Add auth controllers if enabled
+          if (includeAuth) {
+            controllersFolder.file(
+              "authController.js",
+              generatedCode.authControllers.authController
+            );
+          }
+
+          // Add routes
+          const routesFolder = zip.folder("routes");
+          Object.entries(generatedCode.routes).forEach(([modelName, code]) => {
+            routesFolder.file(`${modelName}Routes.js`, code);
+          });
+
+          // Add auth routes if enabled
+          if (includeAuth) {
+            routesFolder.file("authRoutes.js", generatedCode.authRoutes);
+          }
+
+          // Add validators if enabled
+          if (includeValidation) {
+            const validatorsFolder = zip.folder("validators");
+            Object.entries(generatedCode.validators).forEach(
+              ([modelName, code]) => {
+                validatorsFolder.file(`${modelName}Validator.js`, code);
+              }
+            );
+
+            // Add auth validators if enabled
+            if (includeAuth) {
+              validatorsFolder.file(
+                "authValidator.js",
+                generatedCode.authValidators
+              );
+            }
+          }
+
+          // Add middlewares
+          const middlewaresFolder = zip.folder("middlewares");
+          middlewaresFolder.file(
+            "responseMiddleware.js",
+            generatedCode.middleware
+          );
+
+          // Add auth middleware if enabled
+          if (includeAuth) {
+            middlewaresFolder.file(
+              "authMiddleware.js",
+              generatedCode.authMiddleware
+            );
+          }
+
+          // Add utils
+          const utilsFolder = zip.folder("utils");
+          utilsFolder.file("bcryptUtils.js", generatedCode.utils.bcryptUtils);
+          utilsFolder.file("emailUtils.js", generatedCode.utils.emailUtils);
+          utilsFolder.file("smsUtils.js", generatedCode.utils.smsUtils);
+          utilsFolder.file("otpUtils.js", generatedCode.utils.otpUtils);
+
+          // Add environment files
+          zip.file(".env.development", generatedCode.envFiles.envDevelopment);
+          zip.file(".env.production", generatedCode.envFiles.envProduction);
+          zip.file(".env.sample", generatedCode.envFiles.envSample);
+
+          // Add server.js
+          zip.file("server.js", generatedCode.mounting);
+
+          // Add package.json
+          const packageJson = `{
+  "name": "mern-backend",
+  "version": "1.0.0",
+  "description": "Generated MERN backend",
+  "main": "server.js",
+  "scripts": {
+    "start": "NODE_ENV=production node server.js",
+    "dev": "NODE_ENV=development nodemon server.js",
+    "test": "NODE_ENV=test jest"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "mongoose": "^7.5.0",
+    "express-validator": "^7.0.1",
+    "bcrypt": "^5.1.1",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^6.9.7",
+    "twilio": "^4.18.1",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}`;
+          zip.file("package.json", packageJson);
+
+          // Generate zip file
+          zip.generateAsync({ type: "blob" }).then(function (content) {
+            // Create download link
+            const a = document.createElement("a");
+            const url = URL.createObjectURL(content);
+            a.href = url;
+            a.download = "mern-backend.zip";
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(function () {
+              document.body.removeChild(a);
+              window.URL.revokeObjectURL(url);
+            }, 0);
+          });
+        };
+
+        // Load JSZip library dynamically
+        useEffect(() => {
+          const script = document.createElement("script");
+          script.src =
+            "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+          script.async = true;
+          document.body.appendChild(script);
+
+          return () => {
+            document.body.removeChild(script);
+          };
+        }, []);
+
+        return (
+          <div className="container mx-auto px-6 py-10">
+            {/* Header */}
+            <h1 className="text-4xl md:text-5xl font-extrabold text-center mb-10 bg-gradient-to-r from-blue-500 via-purple-600 to-pink-500 bg-clip-text text-transparent drop-shadow-md">
+              GenStack - MERN Stack Code Generator
+            </h1>
+
+            {/* Database Connection Section */}
+            {!dbConnected ? (
+              <div className="bg-white/80 backdrop-blur-lg p-8 rounded-2xl shadow-lg border border-gray-100 mb-10">
+                <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center">
+                  <span>Database Connection</span>
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Host
+                    </label>
+                    <input
+                      type="text"
+                      name="host"
+                      value={dbCredentials.host}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 transition"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Port
+                    </label>
+                    <input
+                      type="text"
+                      name="port"
+                      value={dbCredentials.port}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 transition"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Database Name
+                    </label>
+                    <input
+                      type="text"
+                      name="database"
+                      value={dbCredentials.database}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 transition"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Username (optional)
+                    </label>
+                    <input
+                      type="text"
+                      name="username"
+                      value={dbCredentials.username}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 transition"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Password (optional)
+                    </label>
+                    <input
+                      type="password"
+                      name="password"
+                      value={dbCredentials.password}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 transition"
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={connectToDB}
+                  className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg shadow-lg hover:opacity-90 transition"
+                >
+                  Connect to Database
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Model Management Section */}
+                <div className="bg-white/80 backdrop-blur-lg p-8 rounded-2xl shadow-lg border border-gray-100 mb-12">
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold text-gray-800">
+                      Model Management
+                    </h2>
+                    <button
+                      onClick={exportBackend}
+                      className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-lg shadow-md hover:scale-105 transition"
+                    >
+                      Export Backend
+                    </button>
+                  </div>
+                  {/* Feature Toggles */}
+                  <div className="flex flex-wrap gap-6 mb-6">
+                    <label className="flex items-center bg-gray-50 p-3 rounded-lg shadow-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={includePagination}
+                        onChange={(e) => setIncludePagination(e.target.checked)}
+                        className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
+                      />
+                      <span className="text-gray-700 font-medium">
+                        Include Pagination
+                      </span>
+                    </label>
+                    <label className="flex items-center bg-gray-50 p-3 rounded-lg shadow-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={includeValidation}
+                        onChange={(e) => setIncludeValidation(e.target.checked)}
+                        className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
+                      />
+                      <span className="text-gray-700 font-medium">
+                        Include Validation
+                      </span>
+                    </label>
+                    <label className="flex items-center bg-gray-50 p-3 rounded-lg shadow-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={includeAuth}
+                        onChange={(e) => setIncludeAuth(e.target.checked)}
+                        className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
+                      />
+                      <span className="text-gray-700 font-medium">
+                        Include Authentication
+                      </span>
+                    </label>
+                  </div>
+                  {/* Auth Config Card */}
+                  {includeAuth && (
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 p-6 rounded-xl shadow-inner mb-6">
+                      <h3 className="text-lg font-semibold mb-4 text-gray-800">
+                        Authentication Configuration
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                        {[
+                          {
+                            label: "JWT Secret",
+                            key: "jwtSecret",
+                            type: "text",
+                          },
+                          {
+                            label: "JWT Expiration",
+                            key: "jwtExpiresIn",
+                            type: "text",
+                          },
+                          {
+                            label: "Bcrypt Rounds",
+                            key: "bcryptRounds",
+                            type: "number",
+                          },
+                          { label: "SMTP Host", key: "smtpHost", type: "text" },
+                          {
+                            label: "SMTP Port",
+                            key: "smtpPort",
+                            type: "number",
+                          },
+                          { label: "SMTP User", key: "smtpUser", type: "text" },
+                          {
+                            label: "SMTP Password",
+                            key: "smtpPass",
+                            type: "password",
+                          },
+                          {
+                            label: "Twilio SID",
+                            key: "twilioSid",
+                            type: "text",
+                          },
+                          {
+                            label: "Twilio Token",
+                            key: "twilioToken",
+                            type: "text",
+                          },
+                          {
+                            label: "Twilio Phone",
+                            key: "twilioPhone",
+                            type: "text",
+                          },
+                        ].map((field, i) => (
+                          <div key={i}>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                              {field.label}
+                            </label>
+                            <input
+                              type={field.type}
+                              name={field.key}
+                              value={authConfig[field.key]}
+                              onChange={handleAuthConfigChange}
+                              className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 transition"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* Saved Models Section */}
+                  {models.length > 0 && (
+                    <div className="mb-6">
+                      <h3 className="text-lg font-semibold mb-2">
+                        Saved Models
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {models.map((model, index) => (
+                          <div
+                            key={index}
+                            className="border rounded-lg p-5 bg-gray-50 shadow hover:scale-105 transition"
+                          >
+                            <div className="flex justify-between items-center mb-2">
+                              <h4 className="font-bold text-gray-800">
+                                {model.name}
+                              </h4>
+                              <div>
+                                <button
+                                  onClick={() => editModel(index)}
+                                  className="text-blue-600 hover:underline mr-2"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => deleteModel(index)}
+                                  className="text-red-600 hover:underline"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              {model.fields.length} fields
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {model.fields.slice(0, 3).map((field, i) => (
+                                <span
+                                  key={i}
+                                  className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 text-xs"
+                                >
+                                  {field.name}: {field.type}
+                                </span>
+                              ))}
+                              {model.fields.length > 3 && (
+                                <span className="px-2 py-1 rounded-full bg-gray-200 text-gray-600 text-xs">
+                                  +{model.fields.length - 3} more
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* Model Creation Form */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Model Name
+                    </label>
+                    <input
+                      type="text"
+                      value={currentModel.name}
+                      onChange={(e) =>
+                        setCurrentModel({
+                          ...currentModel,
+                          name: e.target.value,
+                        })
+                      }
+                      placeholder="e.g., User, Product, Blog"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-400 transition"
+                    />
+                  </div>
+                  <h3 className="text-lg font-medium mb-2">Add Fields</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-6 gap-6 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Field Name
+                      </label>
+                      <input
+                        type="text"
+                        value={newField.name}
+                        onChange={(e) =>
+                          setNewField({ ...newField, name: e.target.value })
+                        }
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Type
+                      </label>
+                      <select
+                        value={newField.type}
+                        onChange={(e) =>
+                          setNewField({ ...newField, type: e.target.value })
+                        }
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 transition"
+                      >
+                        <option value="String">String</option>
+                        <option value="Number">Number</option>
+                        <option value="Boolean">Boolean</option>
+                        <option value="Date">Date</option>
+                        <option value="Array">Array</option>
+                        <option value="ObjectId">ObjectId</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Default Value
+                      </label>
+                      <input
+                        type="text"
+                        value={newField.default}
+                        onChange={(e) =>
+                          setNewField({ ...newField, default: e.target.value })
+                        }
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 transition"
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={newField.required}
+                          onChange={(e) =>
+                            setNewField({
+                              ...newField,
+                              required: e.target.checked,
+                            })
+                          }
+                          className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">
+                          Required
+                        </span>
+                      </label>
+                    </div>
+                    <div className="flex items-end">
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={newField.unique}
+                          onChange={(e) =>
+                            setNewField({
+                              ...newField,
+                              unique: e.target.checked,
+                            })
+                          }
+                          className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">
+                          Unique
+                        </span>
+                      </label>
+                    </div>
+                    <div className="flex items-end">
+                      <button
+                        onClick={addField}
+                        className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-lg shadow hover:scale-105 transition"
+                      >
+                        Add Field
+                      </button>
+                    </div>
+                  </div>
+                  {/* Current Fields Table */}
+                  {currentModel.fields.length > 0 && (
+                    <div className="mb-4">
+                      <h3 className="text-lg font-medium mb-2">
+                        Current Fields
+                      </h3>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                Name
+                              </th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                Type
+                              </th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                Required
+                              </th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                Unique
+                              </th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                Default
+                              </th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                Action
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {currentModel.fields.map((field, index) => (
+                              <tr key={index}>
+                                <td className="px-4 py-2">{field.name}</td>
+                                <td className="px-4 py-2">{field.type}</td>
+                                <td className="px-4 py-2">
+                                  {field.required ? "Yes" : "No"}
+                                </td>
+                                <td className="px-4 py-2">
+                                  {field.unique ? "Yes" : "No"}
+                                </td>
+                                <td className="px-4 py-2">
+                                  {field.default || "-"}
+                                </td>
+                                <td className="px-4 py-2">
+                                  <button
+                                    onClick={() => removeField(index)}
+                                    className="text-red-600 hover:underline"
+                                  >
+                                    Remove
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                  {/* Save/Update Model Button */}
+                  <button
+                    onClick={saveModel}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl shadow-md hover:scale-105 transition"
+                  >
+                    {selectedModelIndex >= 0 ? "Update Model" : "Save Model"}
+                  </button>
+                </div>
+
+                {/* Code Preview Section */}
+                {Object.keys(generatedCode).length > 0 &&
+                  (models.length > 0 || includeAuth) && (
+                    <div className="bg-white/90 backdrop-blur p-8 rounded-2xl shadow-lg border border-gray-100">
+                      <h2 className="text-2xl font-bold mb-6 text-gray-800">
+                        Generated Code
+                      </h2>
+
+                      {/* Tabs for code preview, now dynamic */}
+                      <div className="flex flex-wrap gap-2 border-b border-gray-200 mb-4 overflow-x-auto">
+                        <button
+                          className={`py-2 px-4 rounded-t-lg text-sm font-medium transition ${
+                            activeTab === "mounting"
+                              ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow"
+                              : "text-gray-500 hover:text-gray-800"
+                          }`}
+                          onClick={() => setActiveTab("mounting")}
+                        >
+                          Server.js
+                        </button>
+                        <button
+                          className={`py-2 px-4 rounded-t-lg text-sm font-medium transition ${
+                            activeTab === "config"
+                              ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow"
+                              : "text-gray-500 hover:text-gray-800"
+                          }`}
+                          onClick={() => setActiveTab("config")}
+                        >
+                          Config
+                        </button>
+                        <button
+                          className={`py-2 px-4 rounded-t-lg text-sm font-medium transition ${
+                            activeTab === "db"
+                              ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow"
+                              : "text-gray-500 hover:text-gray-800"
+                          }`}
+                          onClick={() => setActiveTab("db")}
+                        >
+                          Database
+                        </button>
+                        <button
+                          className={`py-2 px-4 rounded-t-lg text-sm font-medium transition ${
+                            activeTab === "middleware"
+                              ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow"
+                              : "text-gray-500 hover:text-gray-800"
+                          }`}
+                          onClick={() => setActiveTab("middleware")}
+                        >
+                          Middleware
+                        </button>
+                        {includeAuth && (
+                          <>
+                            <button
+                              className={`py-2 px-4 rounded-t-lg text-sm font-medium transition ${
+                                activeTab === "auth-user"
+                                  ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow"
+                                  : "text-gray-500 hover:text-gray-800"
+                              }`}
+                              onClick={() => setActiveTab("auth-user")}
+                            >
+                              User Model
+                            </button>
+                            <button
+                              className={`py-2 px-4 rounded-t-lg text-sm font-medium transition ${
+                                activeTab === "auth-otp"
+                                  ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow"
+                                  : "text-gray-500 hover:text-gray-800"
+                              }`}
+                              onClick={() => setActiveTab("auth-otp")}
+                            >
+                              OTP Model
+                            </button>
+                            <button
+                              className={`py-2 px-4 rounded-t-lg text-sm font-medium transition ${
+                                activeTab === "auth-controller"
+                                  ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow"
+                                  : "text-gray-500 hover:text-gray-800"
+                              }`}
+                              onClick={() => setActiveTab("auth-controller")}
+                            >
+                              Auth Controller
+                            </button>
+                            <button
+                              className={`py-2 px-4 rounded-t-lg text-sm font-medium transition ${
+                                activeTab === "auth-routes"
+                                  ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow"
+                                  : "text-gray-500 hover:text-gray-800"
+                              }`}
+                              onClick={() => setActiveTab("auth-routes")}
+                            >
+                              Auth Routes
+                            </button>
+                          </>
+                        )}
+                        {models.map((model, index) => (
+                          <button
+                            key={index}
+                            className={`py-2 px-4 rounded-t-lg text-sm font-medium transition ${
+                              activeTab === `model-${model.name}`
+                                ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow"
+                                : "text-gray-500 hover:text-gray-800"
+                            }`}
+                            onClick={() => setActiveTab(`model-${model.name}`)}
+                          >
+                            {model.name} Model
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="relative">
+                        <pre className="bg-gray-900 text-gray-100 p-6 rounded-lg overflow-x-auto font-mono text-sm shadow-inner">
+                          {activeTab === "mounting" && generatedCode.mounting}
+                          {activeTab === "config" && generatedCode.config}
+                          {activeTab === "db" && generatedCode.db}
+                          {activeTab === "middleware" &&
+                            generatedCode.middleware}
+                          {activeTab === "auth-user" &&
+                            generatedCode.authModels.userModel}
+                          {activeTab === "auth-otp" &&
+                            generatedCode.authModels.otpModel}
+                          {activeTab === "auth-controller" &&
+                            generatedCode.authControllers.authController}
+                          {activeTab === "auth-routes" &&
+                            generatedCode.authRoutes}
+                          {activeTab.startsWith("model-") &&
+                            generatedCode.models[
+                              activeTab.replace("model-", "")
+                            ]}
+                        </pre>
+                        <button
+                          onClick={() => {
+                            if (activeTab === "mounting")
+                              copyToClipboard(generatedCode.mounting);
+                            if (activeTab === "config")
+                              copyToClipboard(generatedCode.config);
+                            if (activeTab === "db")
+                              copyToClipboard(generatedCode.db);
+                            if (activeTab === "middleware")
+                              copyToClipboard(generatedCode.middleware);
+                            if (activeTab === "auth-user")
+                              copyToClipboard(
+                                generatedCode.authModels.userModel
+                              );
+                            if (activeTab === "auth-otp")
+                              copyToClipboard(
+                                generatedCode.authModels.otpModel
+                              );
+                            if (activeTab === "auth-controller")
+                              copyToClipboard(
+                                generatedCode.authControllers.authController
+                              );
+                            if (activeTab === "auth-routes")
+                              copyToClipboard(generatedCode.authRoutes);
+                            if (activeTab.startsWith("model-"))
+                              copyToClipboard(
+                                generatedCode.models[
+                                  activeTab.replace("model-", "")
+                                ]
+                              );
+                          }}
+                          className="absolute top-3 right-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow hover:opacity-90 transition"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    </div>
+                  )}
+              </>
+            )}
+          </div>
+        );
+      };
+
+      ReactDOM.render(<MERNGenerator />, document.getElementById("root"));
+    </script>
+  </body>
+</html>

@@ -59,6 +59,9 @@
           name: "",
           fields: [],
         });
+        const [showImportModal, setShowImportModal] = useState(false);
+        const [importSchemaText, setImportSchemaText] = useState("");
+
         const [newField, setNewField] = useState({
           name: "",
           type: "String",
@@ -1788,7 +1791,62 @@ module.exports = responseMiddleware;`;
                         Include Authentication
                       </span>
                     </label>
+                    <button
+                      onClick={() => setShowImportModal(true)}
+                      className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-6 py-3 rounded-lg shadow-md hover:scale-105 transition"
+                    >
+                      Import Schema
+                    </button>
                   </div>
+
+                  {showImportModal && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                      <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl p-6">
+                        <h3 className="text-lg font-bold mb-4 text-gray-800">
+                          Import Schema (JSON)
+                        </h3>
+                        <textarea
+                          rows={12}
+                          value={importSchemaText}
+                          onChange={(e) => setImportSchemaText(e.target.value)}
+                          placeholder='Paste schema JSON here... e.g. [{"name":"User","fields":[{"name":"email","type":"String","required":true}]}]'
+                          className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                        ></textarea>
+
+                        <div className="flex justify-end gap-3 mt-4">
+                          <button
+                            onClick={() => setShowImportModal(false)}
+                            className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => {
+                              try {
+                                const parsed = JSON.parse(importSchemaText);
+                                if (!Array.isArray(parsed)) {
+                                  alert("Schema must be an array of models.");
+                                  return;
+                                }
+
+                                setCurrentModel(
+                                  parsed[0] || { name: "", fields: [] }
+                                );
+                                setShowImportModal(false);
+                                setImportSchemaText("");
+                              } catch (err) {
+                                alert("Invalid JSON schema.");
+                              }
+                            }}
+                            className="px-4 py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:scale-105 transition"
+                          >
+                            Import
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Auth Config Card */}
                   {includeAuth && (
                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 p-6 rounded-xl shadow-inner mb-6">

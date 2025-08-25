@@ -1,0 +1,167 @@
+  {/* Code Preview Section */}
+                {Object.keys(generatedCode).length > 0 &&
+                  (models.length > 0 || includeAuth) && (
+                    <div className="bg-white/90 backdrop-blur p-8 rounded-2xl shadow-lg border border-gray-100">
+                      <h2 className="text-2xl font-bold mb-6 text-gray-800">
+                        Generated Code
+                      </h2>
+
+                      {/* Tabs for code preview, now dynamic */}
+                      <div className="flex flex-wrap gap-2 border-b border-gray-200 mb-4 overflow-x-auto">
+                        <button
+                          className={`py-2 px-4 rounded-t-lg text-sm font-medium transition ${
+                            activeTab === "mounting"
+                              ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow"
+                              : "text-gray-500 hover:text-gray-800"
+                          }`}
+                          onClick={() => setActiveTab("mounting")}
+                        >
+                          Server.js
+                        </button>
+                        <button
+                          className={`py-2 px-4 rounded-t-lg text-sm font-medium transition ${
+                            activeTab === "config"
+                              ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow"
+                              : "text-gray-500 hover:text-gray-800"
+                          }`}
+                          onClick={() => setActiveTab("config")}
+                        >
+                          Config
+                        </button>
+                        <button
+                          className={`py-2 px-4 rounded-t-lg text-sm font-medium transition ${
+                            activeTab === "db"
+                              ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow"
+                              : "text-gray-500 hover:text-gray-800"
+                          }`}
+                          onClick={() => setActiveTab("db")}
+                        >
+                          Database
+                        </button>
+                        <button
+                          className={`py-2 px-4 rounded-t-lg text-sm font-medium transition ${
+                            activeTab === "middleware"
+                              ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow"
+                              : "text-gray-500 hover:text-gray-800"
+                          }`}
+                          onClick={() => setActiveTab("middleware")}
+                        >
+                          Middleware
+                        </button>
+                        {includeAuth && (
+                          <>
+                            <button
+                              className={`py-2 px-4 rounded-t-lg text-sm font-medium transition ${
+                                activeTab === "auth-user"
+                                  ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow"
+                                  : "text-gray-500 hover:text-gray-800"
+                              }`}
+                              onClick={() => setActiveTab("auth-user")}
+                            >
+                              User Model
+                            </button>
+                            <button
+                              className={`py-2 px-4 rounded-t-lg text-sm font-medium transition ${
+                                activeTab === "auth-otp"
+                                  ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow"
+                                  : "text-gray-500 hover:text-gray-800"
+                              }`}
+                              onClick={() => setActiveTab("auth-otp")}
+                            >
+                              OTP Model
+                            </button>
+                            <button
+                              className={`py-2 px-4 rounded-t-lg text-sm font-medium transition ${
+                                activeTab === "auth-controller"
+                                  ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow"
+                                  : "text-gray-500 hover:text-gray-800"
+                              }`}
+                              onClick={() => setActiveTab("auth-controller")}
+                            >
+                              Auth Controller
+                            </button>
+                            <button
+                              className={`py-2 px-4 rounded-t-lg text-sm font-medium transition ${
+                                activeTab === "auth-routes"
+                                  ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow"
+                                  : "text-gray-500 hover:text-gray-800"
+                              }`}
+                              onClick={() => setActiveTab("auth-routes")}
+                            >
+                              Auth Routes
+                            </button>
+                          </>
+                        )}
+                        {models.map((model, index) => (
+                          <button
+                            key={index}
+                            className={`py-2 px-4 rounded-t-lg text-sm font-medium transition ${
+                              activeTab === `model-${model.name}`
+                                ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow"
+                                : "text-gray-500 hover:text-gray-800"
+                            }`}
+                            onClick={() => setActiveTab(`model-${model.name}`)}
+                          >
+                            {model.name} Model
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="relative">
+                        <pre className="bg-gray-900 text-gray-100 p-6 rounded-lg overflow-x-auto font-mono text-sm shadow-inner">
+                          {activeTab === "mounting" && generatedCode.mounting}
+                          {activeTab === "config" && generatedCode.config}
+                          {activeTab === "db" && generatedCode.db}
+                          {activeTab === "middleware" &&
+                            generatedCode.middleware}
+                          {activeTab === "auth-user" &&
+                            generatedCode.authModels.userModel}
+                          {activeTab === "auth-otp" &&
+                            generatedCode.authModels.otpModel}
+                          {activeTab === "auth-controller" &&
+                            generatedCode.authControllers.authController}
+                          {activeTab === "auth-routes" &&
+                            generatedCode.authRoutes}
+                          {activeTab.startsWith("model-") &&
+                            generatedCode.models[
+                              activeTab.replace("model-", "")
+                            ]}
+                        </pre>
+                        <button
+                          onClick={() => {
+                            if (activeTab === "mounting")
+                              copyToClipboard(generatedCode.mounting);
+                            if (activeTab === "config")
+                              copyToClipboard(generatedCode.config);
+                            if (activeTab === "db")
+                              copyToClipboard(generatedCode.db);
+                            if (activeTab === "middleware")
+                              copyToClipboard(generatedCode.middleware);
+                            if (activeTab === "auth-user")
+                              copyToClipboard(
+                                generatedCode.authModels.userModel
+                              );
+                            if (activeTab === "auth-otp")
+                              copyToClipboard(
+                                generatedCode.authModels.otpModel
+                              );
+                            if (activeTab === "auth-controller")
+                              copyToClipboard(
+                                generatedCode.authControllers.authController
+                              );
+                            if (activeTab === "auth-routes")
+                              copyToClipboard(generatedCode.authRoutes);
+                            if (activeTab.startsWith("model-"))
+                              copyToClipboard(
+                                generatedCode.models[
+                                  activeTab.replace("model-", "")
+                                ]
+                              );
+                          }}
+                          className="absolute top-3 right-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow hover:opacity-90 transition"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    </div>
+                  )}

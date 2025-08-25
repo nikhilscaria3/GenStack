@@ -2009,7 +2009,7 @@
                 : {}),
               ...Object.fromEntries(
                 models.map((m) => [
-                  `${m.name}.js`,
+                  `${m.name.toLowerCase()}.js`,
                   generatedCode.models[m.name],
                 ])
               ),
@@ -2023,7 +2023,7 @@
                 : {}),
               ...Object.fromEntries(
                 models.map((m) => [
-                  `${m.name}Controller.js`,
+                  `${m.name.toLowerCase()}Controller.js`,
                   generatedCode.controllers[m.name],
                 ])
               ),
@@ -2034,7 +2034,7 @@
                 : {}),
               ...Object.fromEntries(
                 models.map((m) => [
-                  `${m.name}Routes.js`,
+                  `${m.name.toLowerCase()}Routes.js`,
                   generatedCode.routes[m.name],
                 ])
               ),
@@ -2045,7 +2045,7 @@
                 : {}),
               ...Object.fromEntries(
                 models.map((m) => [
-                  `${m.name}Validator.js`,
+                  `${m.name.toLowerCase()}Validator.js`,
                   generatedCode.validators[m.name],
                 ])
               ),

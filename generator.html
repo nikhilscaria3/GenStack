@@ -54,6 +54,11 @@
           username: "",
           password: "",
         });
+        const [selectedFile, setSelectedFile] = useState({
+          fileName: "",
+          fileCode: "",
+        });
+
         const [models, setModels] = useState([]);
         const [currentModel, setCurrentModel] = useState({
           name: "",
@@ -70,12 +75,37 @@
           default: "",
           isImage: "",
         });
-        const [generatedCode, setGeneratedCode] = useState({});
+        const [generatedCode, setGeneratedCode] = useState({
+          models: {}, // dynamic models
+          controllers: {}, // dynamic controllers
+          routes: {}, // dynamic routes
+          mounting: "", // server.js
+          middleware: "", // responseMiddleware
+          validators: {}, // model validators
+          config: "", // config.js
+          db: "", // db.js
+          envFiles: {
+            // .env files
+            development: "",
+            production: "",
+            sample: "",
+          },
+          utils: {}, // utils like bcryptUtils, emailUtils
+          authModels: {}, // User.js, OTP.js
+          authControllers: {}, // authController.js
+          authRoutes: {}, // authRoutes.js
+          authMiddleware: "", // authMiddleware.js
+          authValidators: {}, // authValidator.js
+          errorHandler: "", // errorHandler.js
+          asyncHandleMiddleware: "", // asyncHandleMiddleware.js
+          multer: "", // multer.js
+          saveBinaryFile: "", // saveBinaryFile.js
+        });
         const [activeTab, setActiveTab] = useState("mounting");
         const [includePagination, setIncludePagination] = useState(true);
         const [includeValidation, setIncludeValidation] = useState(true);
         const [selectedModelIndex, setSelectedModelIndex] = useState(-1);
-        const [includeAuth, setIncludeAuth] = useState(true);
+        const [includeAuth, setIncludeAuth] = useState(false);
         const [authConfig, setAuthConfig] = useState({
           jwtSecret: "your_jwt_secret_key_here",
           jwtExpiresIn: "7d",
@@ -128,6 +158,74 @@
               isImage: "",
             });
           }
+        };
+
+        const handleIncludeAuth = () => {
+          const newModels = [
+            ...models, // keep existing models
+            {
+              name: "User",
+              fields: [
+                { name: "name", type: "String", required: true, trim: true },
+                {
+                  name: "email",
+                  type: "String",
+                  required: true,
+                  unique: true,
+                  lowercase: true,
+                  trim: true,
+                },
+                {
+                  name: "password",
+                  type: "String",
+                  required: true,
+                  minlength: 6,
+                },
+                { name: "phone", type: "String", trim: true },
+                { name: "isEmailVerified", type: "Boolean", default: false },
+                { name: "isPhoneVerified", type: "Boolean", default: false },
+                { name: "avatar", type: "String", default: "" },
+                {
+                  name: "role",
+                  type: "String",
+                  enum: ["user", "admin"],
+                  default: "user",
+                },
+                {
+                  name: "status",
+                  type: "String",
+                  enum: ["active", "inactive", "suspended"],
+                  default: "active",
+                },
+                { name: "lastLogin", type: "Date" },
+              ],
+            },
+            {
+              name: "OTP",
+              fields: [
+                { name: "email", type: "String", required: true },
+                { name: "phone", type: "String" },
+                { name: "otp", type: "String", required: true },
+                {
+                  name: "type",
+                  type: "String",
+                  enum: [
+                    "email-verification",
+                    "phone-verification",
+                    "password-reset",
+                    "2fa",
+                  ],
+                  required: true,
+                },
+                { name: "expiresAt", type: "Date", required: true },
+                { name: "used", type: "Boolean", default: false },
+              ],
+            },
+          ];
+
+          setModels(newModels);
+          generateAllCode(newModels);
+          setIncludeAuth(true);
         };
 
         const removeField = (index) => {
@@ -185,1116 +283,1116 @@
         const generateConfigCode = () => {
           return `const dotenv = require('dotenv');
 
-                  // Load environment variables based on NODE_ENV
-                  if (process.env.NODE_ENV === 'production') {
-                    dotenv.config({ path: '.env.production' });
-                  } else {
-                    dotenv.config({ path: '.env.development' });
-                  }
+                                                // Load environment variables based on NODE_ENV
+                                                if (process.env.NODE_ENV === 'production') {
+                                                  dotenv.config({ path: '.env.production' });
+                                                } else {
+                                                  dotenv.config({ path: '.env.development' });
+                                                }
 
-                  module.exports = {
-                    port: process.env.PORT || 5000,
-                    cloudStore:false,
-                    database: {
-                      host: process.env.DB_HOST || 'localhost',
-                      port: process.env.DB_PORT || 27017,
-                      name: process.env.DB_NAME || 'testdb',
-                      username: process.env.DB_USERNAME || '',
-                      password: process.env.DB_PASSWORD || '',
-                      uri: process.env.DB_URI || \`mongodb://\${process.env.DB_HOST || 'localhost'}:\${process.env.DB_PORT || 27017}/\${process.env.DB_NAME || 'testdb'}\`
-                    },
-                    jwt: {
-                      secret: process.env.JWT_SECRET || 'your_jwt_secret_key_here',
-                      expiresIn: process.env.JWT_EXPIRES_IN || '7d'
-                    },
-                    bcrypt: {
-                      rounds: parseInt(process.env.BCRYPT_ROUNDS) || 10
-                    },
-                    email: {
-                      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-                      port: process.env.SMTP_PORT || 587,
-                      user: process.env.SMTP_USER || 'your_email@gmail.com',
-                      pass: process.env.SMTP_PASS || 'your_app_password'
-                    },
-                    sms: {
-                      sid: process.env.TWILIO_SID || 'your_twilio_sid',
-                      token: process.env.TWILIO_TOKEN || 'your_twilio_token',
-                      phone: process.env.TWILIO_PHONE || 'your_twilio_phone_number'
-                    }
-                  };`;
+                                                module.exports = {
+                                                  port: process.env.PORT || 5000,
+                                                  cloudStore:false,
+                                                  database: {
+                                                    host: process.env.DB_HOST || 'localhost',
+                                                    port: process.env.DB_PORT || 27017,
+                                                    name: process.env.DB_NAME || 'testdb',
+                                                    username: process.env.DB_USERNAME || '',
+                                                    password: process.env.DB_PASSWORD || '',
+                                                    uri: process.env.DB_URI || \`mongodb://\${process.env.DB_HOST || 'localhost'}:\${process.env.DB_PORT || 27017}/\${process.env.DB_NAME || 'testdb'}\`
+                                                  },
+                                                  jwt: {
+                                                    secret: process.env.JWT_SECRET || 'your_jwt_secret_key_here',
+                                                    expiresIn: process.env.JWT_EXPIRES_IN || '7d'
+                                                  },
+                                                  bcrypt: {
+                                                    rounds: parseInt(process.env.BCRYPT_ROUNDS) || 10
+                                                  },
+                                                  email: {
+                                                    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+                                                    port: process.env.SMTP_PORT || 587,
+                                                    user: process.env.SMTP_USER || 'your_email@gmail.com',
+                                                    pass: process.env.SMTP_PASS || 'your_app_password'
+                                                  },
+                                                  sms: {
+                                                    sid: process.env.TWILIO_SID || 'your_twilio_sid',
+                                                    token: process.env.TWILIO_TOKEN || 'your_twilio_token',
+                                                    phone: process.env.TWILIO_PHONE || 'your_twilio_phone_number'
+                                                  }
+                                                };`;
         };
 
         const generateDbCode = () => {
           return `const mongoose = require('mongoose');
-                  const config = require('../config');
+                                                const config = require('../config');
 
-                  const connectDB = async () => {
-                    try {
-                      const conn = await mongoose.connect(config.database.uri, {
-                        useNewUrlParser: true,
-                        useUnifiedTopology: true,
-                      });
+                                                const connectDB = async () => {
+                                                  try {
+                                                    const conn = await mongoose.connect(config.database.uri, {
+                                                      useNewUrlParser: true,
+                                                      useUnifiedTopology: true,
+                                                    });
 
-                      console.log(\`MongoDB Connected: \${conn.connection.host}\`);
-                    } catch (error) {
-                      console.error(\`Error: \${error.message}\`);
-                      process.exit(1);
-                    }
-                  };
+                                                    console.log(\`MongoDB Connected: \${conn.connection.host}\`);
+                                                  } catch (error) {
+                                                    console.error(\`Error: \${error.message}\`);
+                                                    process.exit(1);
+                                                  }
+                                                };
 
-                  module.exports = connectDB;`;
+                                                module.exports = connectDB;`;
         };
 
         const generateEnvFiles = () => {
           const envDevelopment = `# Database
-                  DB_HOST=localhost
-                  DB_PORT=27017
-                  DB_NAME=testdb
-                  DB_USERNAME=
-                  DB_PASSWORD=
-                  DB_URI=mongodb://localhost:27017/testdb
+                                                DB_HOST=localhost
+                                                DB_PORT=27017
+                                                DB_NAME=testdb
+                                                DB_USERNAME=
+                                                DB_PASSWORD=
+                                                DB_URI=mongodb://localhost:27017/testdb
 
-                  # JWT
-                  JWT_SECRET=your_jwt_secret_key_here
-                  JWT_EXPIRES_IN=7d
+                                                # JWT
+                                                JWT_SECRET=your_jwt_secret_key_here
+                                                JWT_EXPIRES_IN=7d
 
-                  # Bcrypt
-                  BCRYPT_ROUNDS=10
+                                                # Bcrypt
+                                                BCRYPT_ROUNDS=10
 
-                  # Email (SMTP)
-                  SMTP_HOST=smtp.gmail.com
-                  SMTP_PORT=587
-                  SMTP_USER=your_email@gmail.com
-                  SMTP_PASS=your_app_password
+                                                # Email (SMTP)
+                                                SMTP_HOST=smtp.gmail.com
+                                                SMTP_PORT=587
+                                                SMTP_USER=your_email@gmail.com
+                                                SMTP_PASS=your_app_password
 
-                  # SMS (Twilio)
-                  TWILIO_SID=AC_your_twilio_sid
-                  TWILIO_TOKEN=your_twilio_token
-                  TWILIO_PHONE=your_twilio_phone_number
+                                                # SMS (Twilio)
+                                                TWILIO_SID=AC_your_twilio_sid
+                                                TWILIO_TOKEN=your_twilio_token
+                                                TWILIO_PHONE=your_twilio_phone_number
 
-                  # Server
-                  PORT=5000
-                  NODE_ENV=development`;
+                                                # Server
+                                                PORT=5000
+                                                NODE_ENV=development`;
 
           const envProduction = `# Database
-                  DB_HOST=your_production_host
-                  DB_PORT=27017
-                  DB_NAME=your_production_db
-                  DB_USERNAME=your_production_username
-                  DB_PASSWORD=your_production_password
-                  DB_URI=your_production_mongodb_uri
+                                                DB_HOST=your_production_host
+                                                DB_PORT=27017
+                                                DB_NAME=your_production_db
+                                                DB_USERNAME=your_production_username
+                                                DB_PASSWORD=your_production_password
+                                                DB_URI=your_production_mongodb_uri
 
-                  # JWT
-                  JWT_SECRET=your_strong_jwt_secret_key_here
-                  JWT_EXPIRES_IN=7d
+                                                # JWT
+                                                JWT_SECRET=your_strong_jwt_secret_key_here
+                                                JWT_EXPIRES_IN=7d
 
-                  # Bcrypt
-                  BCRYPT_ROUNDS=12
+                                                # Bcrypt
+                                                BCRYPT_ROUNDS=12
 
-                  # Email (SMTP)
-                  SMTP_HOST=your_production_smtp_host
-                  SMTP_PORT=587
-                  SMTP_USER=your_production_email
-                  SMTP_PASS=your_production_app_password
+                                                # Email (SMTP)
+                                                SMTP_HOST=your_production_smtp_host
+                                                SMTP_PORT=587
+                                                SMTP_USER=your_production_email
+                                                SMTP_PASS=your_production_app_password
 
-                  # SMS (Twilio)
-                  TWILIO_SID=your_production_twilio_sid
-                  TWILIO_TOKEN=your_production_twilio_token
-                  TWILIO_PHONE=your_production_twilio_phone_number
+                                                # SMS (Twilio)
+                                                TWILIO_SID=your_production_twilio_sid
+                                                TWILIO_TOKEN=your_production_twilio_token
+                                                TWILIO_PHONE=your_production_twilio_phone_number
 
-                  # Server
-                  PORT=5000
-                  NODE_ENV=production`;
+                                                # Server
+                                                PORT=5000
+                                                NODE_ENV=production`;
 
           const envSample = `# Database
-                  DB_HOST=localhost
-                  DB_PORT=27017
-                  DB_NAME=testdb
-                  DB_USERNAME=
-                  DB_PASSWORD=
-                  DB_URI=mongodb://localhost:27017/testdb
+                                                DB_HOST=localhost
+                                                DB_PORT=27017
+                                                DB_NAME=testdb
+                                                DB_USERNAME=
+                                                DB_PASSWORD=
+                                                DB_URI=mongodb://localhost:27017/testdb
 
-                  # JWT
-                  JWT_SECRET=your_jwt_secret_key_here
-                  JWT_EXPIRES_IN=7d
+                                                # JWT
+                                                JWT_SECRET=your_jwt_secret_key_here
+                                                JWT_EXPIRES_IN=7d
 
-                  # Bcrypt
-                  BCRYPT_ROUNDS=10
+                                                # Bcrypt
+                                                BCRYPT_ROUNDS=10
 
-                  # Email (SMTP)
-                  SMTP_HOST=smtp.gmail.com
-                  SMTP_PORT=587
-                  SMTP_USER=your_email@gmail.com
-                  SMTP_PASS=your_app_password
+                                                # Email (SMTP)
+                                                SMTP_HOST=smtp.gmail.com
+                                                SMTP_PORT=587
+                                                SMTP_USER=your_email@gmail.com
+                                                SMTP_PASS=your_app_password
 
-                  # SMS (Twilio)
-                  TWILIO_SID=your_twilio_sid
-                  TWILIO_TOKEN=your_twilio_token
-                  TWILIO_PHONE=your_twilio_phone_number
+                                                # SMS (Twilio)
+                                                TWILIO_SID=your_twilio_sid
+                                                TWILIO_TOKEN=your_twilio_token
+                                                TWILIO_PHONE=your_twilio_phone_number
 
-                  # Server
-                  PORT=5000
-                  NODE_ENV=development`;
+                                                # Server
+                                                PORT=5000
+                                                NODE_ENV=development`;
 
           return { envDevelopment, envProduction, envSample };
         };
 
         const generateUtilsCode = () => {
           const bcryptUtils = `const bcrypt = require('bcrypt');
-                  const config = require('../config');
+                                                const config = require('../config');
 
-                  // Hash password
-                  const hashPassword = async (password) => {
-                    try {
-                      const saltRounds = config.bcrypt.rounds;
-                      const hashedPassword = await bcrypt.hash(password, saltRounds);
-                      return hashedPassword;
-                    } catch (error) {
-                      throw new Error('Error hashing password');
-                    }
-                  };
+                                                // Hash password
+                                                const hashPassword = async (password) => {
+                                                  try {
+                                                    const saltRounds = config.bcrypt.rounds;
+                                                    const hashedPassword = await bcrypt.hash(password, saltRounds);
+                                                    return hashedPassword;
+                                                  } catch (error) {
+                                                    throw new Error('Error hashing password');
+                                                  }
+                                                };
 
-                  // Compare password
-                  const comparePassword = async (password, hashedPassword) => {
-                    try {
-                      const isMatch = await bcrypt.compare(password, hashedPassword);
-                      return isMatch;
-                    } catch (error) {
-                      throw new Error('Error comparing passwords');
-                    }
-                  };
+                                                // Compare password
+                                                const comparePassword = async (password, hashedPassword) => {
+                                                  try {
+                                                    const isMatch = await bcrypt.compare(password, hashedPassword);
+                                                    return isMatch;
+                                                  } catch (error) {
+                                                    throw new Error('Error comparing passwords');
+                                                  }
+                                                };
 
-                  module.exports = {
-                    hashPassword,
-                    comparePassword
-                  };`;
+                                                module.exports = {
+                                                  hashPassword,
+                                                  comparePassword
+                                                };`;
 
           const emailUtils = `const nodemailer = require('nodemailer');
-                  const config = require('../config');
+                                                const config = require('../config');
 
-                  // Create transporter
-                  const transporter = nodemailer.createTransporter({
-                    host: config.email.host,
-                    port: config.email.port,
-                    secure: false, // true for 465, false for other ports
-                    auth: {
-                      user: config.email.user,
-                      pass: config.email.pass,
-                    },
-                  });
+                                                // Create transporter
+                                                const transporter = nodemailer.createTransporter({
+                                                  host: config.email.host,
+                                                  port: config.email.port,
+                                                  secure: false, // true for 465, false for other ports
+                                                  auth: {
+                                                    user: config.email.user,
+                                                    pass: config.email.pass,
+                                                  },
+                                                });
 
-                  // Send email
-                  const sendEmail = async (to, subject, html) => {
-                    try {
-                      const info = await transporter.sendMail({
-                        from: \`"Your App" <\${config.email.user}>\`,
-                        to,
-                        subject,
-                        html,
-                      });
+                                                // Send email
+                                                const sendEmail = async (to, subject, html) => {
+                                                  try {
+                                                    const info = await transporter.sendMail({
+                                                      from: \`"Your App" <\${config.email.user}>\`,
+                                                      to,
+                                                      subject,
+                                                      html,
+                                                    });
 
-                      console.log('Message sent: %s', info.messageId);
-                      return true;
-                    } catch (error) {
-                      console.error('Error sending email:', error);
-                      return false;
-                    }
-                  };
+                                                    console.log('Message sent: %s', info.messageId);
+                                                    return true;
+                                                  } catch (error) {
+                                                    console.error('Error sending email:', error);
+                                                    return false;
+                                                  }
+                                                };
 
-                  // Send verification email
-                  const sendVerificationEmail = async (to, token) => {
-                    const verificationUrl = \`http://yourdomain.com/verify-email?token=\${token}\`;
-                    const subject = 'Verify Your Email Address';
-                    const html = \`
-                      <div>
-                        <h2>Email Verification</h2>
-                        <p>Please click the link below to verify your email address:</p>
-                        <a href="\${verificationUrl}">Verify Email</a>
-                        <p>If you did not create an account, please ignore this email.</p>
-                      </div>
-                    \`;
+                                                // Send verification email
+                                                const sendVerificationEmail = async (to, token) => {
+                                                  const verificationUrl = \`http://yourdomain.com/verify-email?token=\${token}\`;
+                                                  const subject = 'Verify Your Email Address';
+                                                  const html = \`
+                                                    <div>
+                                                      <h2>Email Verification</h2>
+                                                      <p>Please click the link below to verify your email address:</p>
+                                                      <a href="\${verificationUrl}">Verify Email</a>
+                                                      <p>If you did not create an account, please ignore this email.</p>
+                                                    </div>
+                                                  \`;
 
-                    return await sendEmail(to, subject, html);
-                  };
+                                                  return await sendEmail(to, subject, html);
+                                                };
 
-                  // Send password reset email
-                  const sendPasswordResetEmail = async (to, token) => {
-                    const resetUrl = \`http://yourdomain.com/reset-password?token=\${token}\`;
-                    const subject = 'Reset Your Password';
-                    const html = \`
-                      <div>
-                        <h2>Password Reset</h2>
-                        <p>Please click the link below to reset your password:</p>
-                        <a href="\${resetUrl}">Reset Password</a>
-                        <p>If you did not request a password reset, please ignore this email.</p>
-                      </div>
-                    \`;
+                                                // Send password reset email
+                                                const sendPasswordResetEmail = async (to, token) => {
+                                                  const resetUrl = \`http://yourdomain.com/reset-password?token=\${token}\`;
+                                                  const subject = 'Reset Your Password';
+                                                  const html = \`
+                                                    <div>
+                                                      <h2>Password Reset</h2>
+                                                      <p>Please click the link below to reset your password:</p>
+                                                      <a href="\${resetUrl}">Reset Password</a>
+                                                      <p>If you did not request a password reset, please ignore this email.</p>
+                                                    </div>
+                                                  \`;
 
-                    return await sendEmail(to, subject, html);
-                  };
+                                                  return await sendEmail(to, subject, html);
+                                                };
 
-                  module.exports = {
-                    sendEmail,
-                    sendVerificationEmail,
-                    sendPasswordResetEmail
-                  };`;
+                                                module.exports = {
+                                                  sendEmail,
+                                                  sendVerificationEmail,
+                                                  sendPasswordResetEmail
+                                                };`;
 
           const smsUtils = `const twilio = require('twilio');
-                  const config = require('../config');
+                                                const config = require('../config');
 
-                  const client = twilio(config.sms.sid, config.sms.token);
+                                                const client = twilio(config.sms.sid, config.sms.token);
 
-                  // Send SMS
-                  const sendSMS = async (to, message) => {
-                    try {
-                      const result = await client.messages.create({
-                        body: message,
-                        from: config.sms.phone,
-                        to: to
-                      });
+                                                // Send SMS
+                                                const sendSMS = async (to, message) => {
+                                                  try {
+                                                    const result = await client.messages.create({
+                                                      body: message,
+                                                      from: config.sms.phone,
+                                                      to: to
+                                                    });
 
-                      console.log('SMS sent: %s', result.sid);
-                      return true;
-                    } catch (error) {
-                      console.error('Error sending SMS:', error);
-                      return false;
-                    }
-                  };
+                                                    console.log('SMS sent: %s', result.sid);
+                                                    return true;
+                                                  } catch (error) {
+                                                    console.error('Error sending SMS:', error);
+                                                    return false;
+                                                  }
+                                                };
 
-                  // Send verification SMS
-                  const sendVerificationSMS = async (to, code) => {
-                    const message = \`Your verification code is: \${code}. This code will expire in 10 minutes.\`;
-                    return await sendSMS(to, message);
-                  };
+                                                // Send verification SMS
+                                                const sendVerificationSMS = async (to, code) => {
+                                                  const message = \`Your verification code is: \${code}. This code will expire in 10 minutes.\`;
+                                                  return await sendSMS(to, message);
+                                                };
 
-                  // Send OTP
-                  const sendOTP = async (to, otp) => {
-                    const message = \`Your OTP is: \${otp}. This OTP will expire in 10 minutes.\`;
-                    return await sendSMS(to, message);
-                  };
+                                                // Send OTP
+                                                const sendOTP = async (to, otp) => {
+                                                  const message = \`Your OTP is: \${otp}. This OTP will expire in 10 minutes.\`;
+                                                  return await sendSMS(to, message);
+                                                };
 
-                  module.exports = {
-                    sendSMS,
-                    sendVerificationSMS,
-                    sendOTP
-                  };`;
+                                                module.exports = {
+                                                  sendSMS,
+                                                  sendVerificationSMS,
+                                                  sendOTP
+                                                };`;
 
           const otpUtils = `// Generate OTP
-                  const generateOTP = (length = 6) => {
-                    let otp = '';
-                    const digits = '0123456789';
+                                                const generateOTP = (length = 6) => {
+                                                  let otp = '';
+                                                  const digits = '0123456789';
 
-                    for (let i = 0; i < length; i++) {
-                      otp += digits[Math.floor(Math.random() * 10)];
-                    }
+                                                  for (let i = 0; i < length; i++) {
+                                                    otp += digits[Math.floor(Math.random() * 10)];
+                                                  }
 
-                    return otp;
-                  };
+                                                  return otp;
+                                                };
 
-                  // Generate token
-                  const generateToken = (length = 32) => {
-                    let token = '';
-                    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+                                                // Generate token
+                                                const generateToken = (length = 32) => {
+                                                  let token = '';
+                                                  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
-                    for (let i = 0; i < length; i++) {
-                      token += chars[Math.floor(Math.random() * chars.length)];
-                    }
+                                                  for (let i = 0; i < length; i++) {
+                                                    token += chars[Math.floor(Math.random() * chars.length)];
+                                                  }
 
-                    return token;
-                  };
+                                                  return token;
+                                                };
 
-                  // Check if OTP is expired
-                  const isOTPExpired = (createdAt, expiresInMinutes = 10) => {
-                    const now = new Date();
-                    const created = new Date(createdAt);
-                    const diffInMinutes = (now - created) / (1000 * 60);
+                                                // Check if OTP is expired
+                                                const isOTPExpired = (createdAt, expiresInMinutes = 10) => {
+                                                  const now = new Date();
+                                                  const created = new Date(createdAt);
+                                                  const diffInMinutes = (now - created) / (1000 * 60);
 
-                    return diffInMinutes > expiresInMinutes;
-                  };
+                                                  return diffInMinutes > expiresInMinutes;
+                                                };
 
-                  module.exports = {
-                    generateOTP,
-                    generateToken,
-                    isOTPExpired
-                  };`;
+                                                module.exports = {
+                                                  generateOTP,
+                                                  generateToken,
+                                                  isOTPExpired
+                                                };`;
 
           return { bcryptUtils, emailUtils, smsUtils, otpUtils };
         };
 
         const generateAuthModels = () => {
           const userModel = `const mongoose = require('mongoose');
-                  const bcrypt = require('bcrypt');
-                  const { hashPassword } = require('../utils/bcryptUtils');
+                                                const bcrypt = require('bcrypt');
+                                                const { hashPassword } = require('../utils/bcryptUtils');
 
-                  const userSchema = new mongoose.Schema({
-                    name: {
-                      type: String,
-                      required: true,
-                      trim: true
-                    },
-                    email: {
-                      type: String,
-                      required: true,
-                      unique: true,
-                      lowercase: true,
-                      trim: true
-                    },
-                    password: {
-                      type: String,
-                      required: true,
-                      minlength: 6
-                    },
-                    phone: {
-                      type: String,
-                      trim: true
-                    },
-                    isEmailVerified: {
-                      type: Boolean,
-                      default: false
-                    },
-                    isPhoneVerified: {
-                      type: Boolean,
-                      default: false
-                    },
-                    avatar: {
-                      type: String,
-                      default: ''
-                    },
-                    role: {
-                      type: String,
-                      enum: ['user', 'admin'],
-                      default: 'user'
-                    },
-                    status: {
-                      type: String,
-                      enum: ['active', 'inactive', 'suspended'],
-                      default: 'active'
-                    },
-                    lastLogin: {
-                      type: Date
-                    }
-                  }, {
-                    timestamps: true
-                  });
+                                                const userSchema = new mongoose.Schema({
+                                                  name: {
+                                                    type: String,
+                                                    required: true,
+                                                    trim: true
+                                                  },
+                                                  email: {
+                                                    type: String,
+                                                    required: true,
+                                                    unique: true,
+                                                    lowercase: true,
+                                                    trim: true
+                                                  },
+                                                  password: {
+                                                    type: String,
+                                                    required: true,
+                                                    minlength: 6
+                                                  },
+                                                  phone: {
+                                                    type: String,
+                                                    trim: true
+                                                  },
+                                                  isEmailVerified: {
+                                                    type: Boolean,
+                                                    default: false
+                                                  },
+                                                  isPhoneVerified: {
+                                                    type: Boolean,
+                                                    default: false
+                                                  },
+                                                  avatar: {
+                                                    type: String,
+                                                    default: ''
+                                                  },
+                                                  role: {
+                                                    type: String,
+                                                    enum: ['user', 'admin'],
+                                                    default: 'user'
+                                                  },
+                                                  status: {
+                                                    type: String,
+                                                    enum: ['active', 'inactive', 'suspended'],
+                                                    default: 'active'
+                                                  },
+                                                  lastLogin: {
+                                                    type: Date
+                                                  }
+                                                }, {
+                                                  timestamps: true
+                                                });
 
-                  // Hash password before saving
-                  userSchema.pre('save', async function(next) {
-                    if (!this.isModified('password')) return next();
+                                                // Hash password before saving
+                                                userSchema.pre('save', async function(next) {
+                                                  if (!this.isModified('password')) return next();
 
-                    try {
-                      this.password = await hashPassword(this.password);
-                      next();
-                    } catch (error) {
-                      next(error);
-                    }
-                  });
+                                                  try {
+                                                    this.password = await hashPassword(this.password);
+                                                    next();
+                                                  } catch (error) {
+                                                    next(error);
+                                                  }
+                                                });
 
-                  // Compare password method
-                  userSchema.methods.comparePassword = async function(password) {
-                    try {
-                      const bcrypt = require('bcrypt');
-                      return await bcrypt.compare(password, this.password);
-                    } catch (error) {
-                      throw new Error(error);
-                    }
-                  };
+                                                // Compare password method
+                                                userSchema.methods.comparePassword = async function(password) {
+                                                  try {
+                                                    const bcrypt = require('bcrypt');
+                                                    return await bcrypt.compare(password, this.password);
+                                                  } catch (error) {
+                                                    throw new Error(error);
+                                                  }
+                                                };
 
-                  // Remove password from JSON output
-                  userSchema.methods.toJSON = function() {
-                    const user = this.toObject();
-                    delete user.password;
-                    return user;
-                  };
+                                                // Remove password from JSON output
+                                                userSchema.methods.toJSON = function() {
+                                                  const user = this.toObject();
+                                                  delete user.password;
+                                                  return user;
+                                                };
 
-                  module.exports = mongoose.model('User', userSchema);`;
+                                                module.exports = mongoose.model('User', userSchema);`;
 
           const otpModel = `const mongoose = require('mongoose');
 
-                  const otpSchema = new mongoose.Schema({
-                    email: {
-                      type: String,
-                      required: true
-                    },
-                    phone: {
-                      type: String
-                    },
-                    otp: {
-                      type: String,
-                      required: true
-                    },
-                    type: {
-                      type: String,
-                      enum: ['email-verification', 'phone-verification', 'password-reset', '2fa'],
-                      required: true
-                    },
-                    expiresAt: {
-                      type: Date,
-                      required: true
-                    },
-                    used: {
-                      type: Boolean,
-                      default: false
-                    }
-                  }, {
-                    timestamps: true
-                  });
+                                                const otpSchema = new mongoose.Schema({
+                                                  email: {
+                                                    type: String,
+                                                    required: true
+                                                  },
+                                                  phone: {
+                                                    type: String
+                                                  },
+                                                  otp: {
+                                                    type: String,
+                                                    required: true
+                                                  },
+                                                  type: {
+                                                    type: String,
+                                                    enum: ['email-verification', 'phone-verification', 'password-reset', '2fa'],
+                                                    required: true
+                                                  },
+                                                  expiresAt: {
+                                                    type: Date,
+                                                    required: true
+                                                  },
+                                                  used: {
+                                                    type: Boolean,
+                                                    default: false
+                                                  }
+                                                }, {
+                                                  timestamps: true
+                                                });
 
-                  // Index for automatic expiration
-                  otpSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+                                                // Index for automatic expiration
+                                                otpSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
-                  module.exports = mongoose.model('OTP', otpSchema);`;
+                                                module.exports = mongoose.model('OTP', otpSchema);`;
 
           return { userModel, otpModel };
         };
 
         const generateAuthControllers = () => {
           const authController = `const User = require('../models/User');
-                  const OTP = require('../models/OTP');
-                  const { generateOTP, generateToken } = require('../utils/otpUtils');
-                  const { comparePassword } = require('../utils/bcryptUtils');
-                  const { sendVerificationEmail, sendPasswordResetEmail } = require('../utils/emailUtils');
-                  const { sendVerificationSMS, sendOTP } = require('../utils/smsUtils');
-                  const jwt = require('jsonwebtoken');
-                  const config = require('../config');
+                                                const OTP = require('../models/OTP');
+                                                const { generateOTP, generateToken } = require('../utils/otpUtils');
+                                                const { comparePassword } = require('../utils/bcryptUtils');
+                                                const { sendVerificationEmail, sendPasswordResetEmail } = require('../utils/emailUtils');
+                                                const { sendVerificationSMS, sendOTP } = require('../utils/smsUtils');
+                                                const jwt = require('jsonwebtoken');
+                                                const config = require('../config');
 
-                  // Generate JWT token
-                  const generateAuthToken = (user) => {
-                    return jwt.sign(
-                      {
-                        userId: user._id,
-                        email: user.email,
-                        role: user.role
-                      },
-                      config.jwt.secret,
-                      { expiresIn: config.jwt.expiresIn }
-                    );
-                  };
+                                                // Generate JWT token
+                                                const generateAuthToken = (user) => {
+                                                  return jwt.sign(
+                                                    {
+                                                      userId: user._id,
+                                                      email: user.email,
+                                                      role: user.role
+                                                    },
+                                                    config.jwt.secret,
+                                                    { expiresIn: config.jwt.expiresIn }
+                                                  );
+                                                };
 
-                  // Register user
-                  exports.register = async (req, res) => {
-                    try {
-                      const { name, email, password, phone } = req.body;
+                                                // Register user
+                                                exports.register = async (req, res) => {
+                                                  try {
+                                                    const { name, email, password, phone } = req.body;
 
-                      // Check if user already exists
-                      const existingUser = await User.findOne({ email });
-                      if (existingUser) {
-                        return res.badRequest('User with this email already exists');
-                      }
+                                                    // Check if user already exists
+                                                    const existingUser = await User.findOne({ email });
+                                                    if (existingUser) {
+                                                      return res.badRequest('User with this email already exists');
+                                                    }
 
-                      // Create user
-                      const user = new User({ name, email, password, phone });
-                      await user.save();
+                                                    // Create user
+                                                    const user = new User({ name, email, password, phone });
+                                                    await user.save();
 
-                      // Generate email verification OTP
-                      const otp = generateOTP();
-                      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+                                                    // Generate email verification OTP
+                                                    const otp = generateOTP();
+                                                    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-                      await OTP.create({
-                        email,
-                        otp,
-                        type: 'email-verification',
-                        expiresAt
-                      });
+                                                    await OTP.create({
+                                                      email,
+                                                      otp,
+                                                      type: 'email-verification',
+                                                      expiresAt
+                                                    });
 
-                      // Send verification email
-                      await sendVerificationEmail(email, otp);
+                                                    // Send verification email
+                                                    await sendVerificationEmail(email, otp);
 
-                      // Generate token
-                      const token = generateAuthToken(user);
+                                                    // Generate token
+                                                    const token = generateAuthToken(user);
 
-                      // Remove password from response
-                      const userResponse = user.toJSON();
+                                                    // Remove password from response
+                                                    const userResponse = user.toJSON();
 
-                      res.successResponse(
-                        { user: userResponse, token },
-                        'User registered successfully. Please check your email for verification.'
-                      );
-                    } catch (error) {
-                      res.serverError(error.message);
-                    }
-                  };
+                                                    res.successResponse(
+                                                      { user: userResponse, token },
+                                                      'User registered successfully. Please check your email for verification.'
+                                                    );
+                                                  } catch (error) {
+                                                    res.serverError(error.message);
+                                                  }
+                                                };
 
-                  // Login user
-                  exports.login = async (req, res) => {
-                    try {
-                      const { email, password } = req.body;
+                                                // Login user
+                                                exports.login = async (req, res) => {
+                                                  try {
+                                                    const { email, password } = req.body;
 
-                      // Find user
-                      const user = await User.findOne({ email });
-                      if (!user) {
-                        return res.badRequest('Invalid email or password');
-                      }
+                                                    // Find user
+                                                    const user = await User.findOne({ email });
+                                                    if (!user) {
+                                                      return res.badRequest('Invalid email or password');
+                                                    }
 
-                      // Check password
-                      const isPasswordValid = await comparePassword(password, user.password);
-                      if (!isPasswordValid) {
-                        return res.badRequest('Invalid email or password');
-                      }
+                                                    // Check password
+                                                    const isPasswordValid = await comparePassword(password, user.password);
+                                                    if (!isPasswordValid) {
+                                                      return res.badRequest('Invalid email or password');
+                                                    }
 
-                      // Check if account is active
-                      if (user.status !== 'active') {
-                        return res.badRequest('Your account is not active. Please contact support.');
-                      }
+                                                    // Check if account is active
+                                                    if (user.status !== 'active') {
+                                                      return res.badRequest('Your account is not active. Please contact support.');
+                                                    }
 
-                      // Update last login
-                      user.lastLogin = new Date();
-                      await user.save();
+                                                    // Update last login
+                                                    user.lastLogin = new Date();
+                                                    await user.save();
 
-                      // Generate token
-                      const token = generateAuthToken(user);
+                                                    // Generate token
+                                                    const token = generateAuthToken(user);
 
-                      // Remove password from response
-                      const userResponse = user.toJSON();
+                                                    // Remove password from response
+                                                    const userResponse = user.toJSON();
 
-                      res.successResponse(
-                        { user: userResponse, token },
-                        'Login successful'
-                      );
-                    } catch (error) {
-                      res.serverError(error.message);
-                    }
-                  };
+                                                    res.successResponse(
+                                                      { user: userResponse, token },
+                                                      'Login successful'
+                                                    );
+                                                  } catch (error) {
+                                                    res.serverError(error.message);
+                                                  }
+                                                };
 
-                  // Verify email
-                  exports.verifyEmail = async (req, res) => {
-                    try {
-                      const { email, otp } = req.body;
+                                                // Verify email
+                                                exports.verifyEmail = async (req, res) => {
+                                                  try {
+                                                    const { email, otp } = req.body;
 
-                      // Find OTP record
-                      const otpRecord = await OTP.findOne({
-                        email,
-                        otp,
-                        type: 'email-verification',
-                        used: false,
-                        expiresAt: { $gt: new Date() }
-                      });
+                                                    // Find OTP record
+                                                    const otpRecord = await OTP.findOne({
+                                                      email,
+                                                      otp,
+                                                      type: 'email-verification',
+                                                      used: false,
+                                                      expiresAt: { $gt: new Date() }
+                                                    });
 
-                      if (!otpRecord) {
-                        return res.badRequest('Invalid or expired OTP');
-                      }
+                                                    if (!otpRecord) {
+                                                      return res.badRequest('Invalid or expired OTP');
+                                                    }
 
-                      // Update user
-                      await User.findOneAndUpdate(
-                        { email },
-                        { isEmailVerified: true }
-                      );
+                                                    // Update user
+                                                    await User.findOneAndUpdate(
+                                                      { email },
+                                                      { isEmailVerified: true }
+                                                    );
 
-                      // Mark OTP as used
-                      otpRecord.used = true;
-                      await otpRecord.save();
+                                                    // Mark OTP as used
+                                                    otpRecord.used = true;
+                                                    await otpRecord.save();
 
-                      res.successResponse(null, 'Email verified successfully');
-                    } catch (error) {
-                      res.serverError(error.message);
-                    }
-                  };
+                                                    res.successResponse(null, 'Email verified successfully');
+                                                  } catch (error) {
+                                                    res.serverError(error.message);
+                                                  }
+                                                };
 
-                  // Forgot password
-                  exports.forgotPassword = async (req, res) => {
-                    try {
-                      const { email } = req.body;
+                                                // Forgot password
+                                                exports.forgotPassword = async (req, res) => {
+                                                  try {
+                                                    const { email } = req.body;
 
-                      // Find user
-                      const user = await User.findOne({ email });
-                      if (!user) {
-                        return res.successResponse(null, 'If the email exists, a password reset link has been sent');
-                      }
+                                                    // Find user
+                                                    const user = await User.findOne({ email });
+                                                    if (!user) {
+                                                      return res.successResponse(null, 'If the email exists, a password reset link has been sent');
+                                                    }
 
-                      // Generate OTP
-                      const otp = generateOTP();
-                      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+                                                    // Generate OTP
+                                                    const otp = generateOTP();
+                                                    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-                      // Save OTP
-                      await OTP.create({
-                        email,
-                        otp,
-                        type: 'password-reset',
-                        expiresAt
-                      });
+                                                    // Save OTP
+                                                    await OTP.create({
+                                                      email,
+                                                      otp,
+                                                      type: 'password-reset',
+                                                      expiresAt
+                                                    });
 
-                      // Send password reset email
-                      await sendPasswordResetEmail(email, otp);
+                                                    // Send password reset email
+                                                    await sendPasswordResetEmail(email, otp);
 
-                      res.successResponse(null, 'If the email exists, a password reset link has been sent');
-                    } catch (error) {
-                      res.serverError(error.message);
-                    }
-                  };
+                                                    res.successResponse(null, 'If the email exists, a password reset link has been sent');
+                                                  } catch (error) {
+                                                    res.serverError(error.message);
+                                                  }
+                                                };
 
-                  // Reset password
-                  exports.resetPassword = async (req, res) => {
-                    try {
-                      const { email, otp, newPassword } = req.body;
+                                                // Reset password
+                                                exports.resetPassword = async (req, res) => {
+                                                  try {
+                                                    const { email, otp, newPassword } = req.body;
 
-                      // Find OTP record
-                      const otpRecord = await OTP.findOne({
-                        email,
-                        otp,
-                        type: 'password-reset',
-                        used: false,
-                        expiresAt: { $gt: new Date() }
-                      });
+                                                    // Find OTP record
+                                                    const otpRecord = await OTP.findOne({
+                                                      email,
+                                                      otp,
+                                                      type: 'password-reset',
+                                                      used: false,
+                                                      expiresAt: { $gt: new Date() }
+                                                    });
 
-                      if (!otpRecord) {
-                        return res.badRequest('Invalid or expired OTP');
-                      }
+                                                    if (!otpRecord) {
+                                                      return res.badRequest('Invalid or expired OTP');
+                                                    }
 
-                      // Update user password
-                      const user = await User.findOne({ email });
-                      user.password = newPassword;
-                      await user.save();
+                                                    // Update user password
+                                                    const user = await User.findOne({ email });
+                                                    user.password = newPassword;
+                                                    await user.save();
 
-                      // Mark OTP as used
-                      otpRecord.used = true;
-                      await otpRecord.save();
+                                                    // Mark OTP as used
+                                                    otpRecord.used = true;
+                                                    await otpRecord.save();
 
-                      res.successResponse(null, 'Password reset successfully');
-                    } catch (error) {
-                      res.serverError(error.message);
-                    }
-                  };
+                                                    res.successResponse(null, 'Password reset successfully');
+                                                  } catch (error) {
+                                                    res.serverError(error.message);
+                                                  }
+                                                };
 
-                  // Get current user profile
-                  exports.getProfile = async (req, res) => {
-                    try {
-                      const user = await User.findById(req.userId);
-                      res.successResponse({ user }, 'Profile retrieved successfully');
-                    } catch (error) {
-                      res.serverError(error.message);
-                    }
-                  };
+                                                // Get current user profile
+                                                exports.getProfile = async (req, res) => {
+                                                  try {
+                                                    const user = await User.findById(req.userId);
+                                                    res.successResponse({ user }, 'Profile retrieved successfully');
+                                                  } catch (error) {
+                                                    res.serverError(error.message);
+                                                  }
+                                                };
 
-                  // Update profile
-                  exports.updateProfile = async (req, res) => {
-                    try {
-                      const { name, phone, avatar } = req.body;
+                                                // Update profile
+                                                exports.updateProfile = async (req, res) => {
+                                                  try {
+                                                    const { name, phone, avatar } = req.body;
 
-                      const user = await User.findByIdAndUpdate(
-                        req.userId,
-                        { name, phone, avatar },
-                        { new: true, runValidators: true }
-                      );
+                                                    const user = await User.findByIdAndUpdate(
+                                                      req.userId,
+                                                      { name, phone, avatar },
+                                                      { new: true, runValidators: true }
+                                                    );
 
-                      res.successResponse({ user }, 'Profile updated successfully');
-                    } catch (error) {
-                      res.serverError(error.message);
-                    }
-                  };
+                                                    res.successResponse({ user }, 'Profile updated successfully');
+                                                  } catch (error) {
+                                                    res.serverError(error.message);
+                                                  }
+                                                };
 
-                  // Change password
-                  exports.changePassword = async (req, res) => {
-                    try {
-                      const { currentPassword, newPassword } = req.body;
+                                                // Change password
+                                                exports.changePassword = async (req, res) => {
+                                                  try {
+                                                    const { currentPassword, newPassword } = req.body;
 
-                      // Find user
-                      const user = await User.findById(req.userId);
+                                                    // Find user
+                                                    const user = await User.findById(req.userId);
 
-                      // Check current password
-                      const isCurrentPasswordValid = await comparePassword(currentPassword, user.password);
-                      if (!isCurrentPasswordValid) {
-                        return res.badRequest('Current password is incorrect');
-                      }
+                                                    // Check current password
+                                                    const isCurrentPasswordValid = await comparePassword(currentPassword, user.password);
+                                                    if (!isCurrentPasswordValid) {
+                                                      return res.badRequest('Current password is incorrect');
+                                                    }
 
-                      // Update password
-                      user.password = newPassword;
-                      await user.save();
+                                                    // Update password
+                                                    user.password = newPassword;
+                                                    await user.save();
 
-                      res.successResponse(null, 'Password changed successfully');
-                    } catch (error) {
-                      res.serverError(error.message);
-                    }
-                  };
+                                                    res.successResponse(null, 'Password changed successfully');
+                                                  } catch (error) {
+                                                    res.serverError(error.message);
+                                                  }
+                                                };
 
-                  // Logout (client-side token removal)
-                  exports.logout = async (req, res) => {
-                    try {
-                      // In a stateless JWT system, logout is handled client-side by removing the token
-                      // You might want to implement token blacklisting if needed
-                      res.successResponse(null, 'Logged out successfully');
-                    } catch (error) {
-                      res.serverError(error.message);
-                    }
-                  };`;
+                                                // Logout (client-side token removal)
+                                                exports.logout = async (req, res) => {
+                                                  try {
+                                                    // In a stateless JWT system, logout is handled client-side by removing the token
+                                                    // You might want to implement token blacklisting if needed
+                                                    res.successResponse(null, 'Logged out successfully');
+                                                  } catch (error) {
+                                                    res.serverError(error.message);
+                                                  }
+                                                };`;
 
           return { authController };
         };
         const generateSaveBinaryFile = () => {
           return `
 
-const fs = require("fs");
-const path = require("path");
-const { v4: uuid } = require("uuid");
-const {
-  S3Client,
-  PutObjectCommand,
-} = require("@aws-sdk/client-s3");
+                              const fs = require("fs");
+                              const path = require("path");
+                              const { v4: uuid } = require("uuid");
+                              const {
+                                S3Client,
+                                PutObjectCommand,
+                              } = require("@aws-sdk/client-s3");
 
-const config = require("../config"); // assumes config has cloudStore flag
+                              const config = require("../config"); // assumes config has cloudStore flag
 
-// --- Local Save ---
-const saveLocally = async (file) => {
-  const randomId = uuid();
-  const fileExtension = path.extname(file.originalname);
-  const saveDir = path.join(__dirname, "../views/assets");
+                              // --- Local Save ---
+                              const saveLocally = async (file) => {
+                                const randomId = uuid();
+                                const fileExtension = path.extname(file.originalname);
+                                const saveDir = path.join(__dirname, "../views/assets");
 
-  if (!fs.existsSync(saveDir)) {
-    fs.mkdirSync(saveDir, { recursive: true });
-  }
+                                if (!fs.existsSync(saveDir)) {
+                                  fs.mkdirSync(saveDir, { recursive: true });
+                                }
 
-  const imagePath = path.join(saveDir, \`\${randomId}\${fileExtension}\`);
-  fs.writeFileSync(imagePath, file.buffer);
+                                const imagePath = path.join(saveDir, \`\${randomId}\${fileExtension}\`);
+                                fs.writeFileSync(imagePath, file.buffer);
 
-  return \`/assets/\${randomId}\${fileExtension}\`;
-};
+                                return \`/assets/\${randomId}\${fileExtension}\`;
+                              };
 
-// --- S3 Setup ---
-const s3Client = new S3Client({
-  region: process.env.AWS_REGION,
-  endpoint: process.env.AWS_ENDPOINT,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  },
-});
+                              // --- S3 Setup ---
+                              const s3Client = new S3Client({
+                                region: process.env.AWS_REGION,
+                                endpoint: process.env.AWS_ENDPOINT,
+                                credentials: {
+                                  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+                                  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+                                },
+                              });
 
-const uploadToS3 = async (file) => {
-  const fileExtension = path.extname(file.originalname).toLowerCase();
-  const key = \`\${uuid()}\${fileExtension}\`;
+                              const uploadToS3 = async (file) => {
+                                const fileExtension = path.extname(file.originalname).toLowerCase();
+                                const key = \`\${uuid()}\${fileExtension}\`;
 
-  const params = {
-    Bucket: process.env.AWS_S3_BUCKET,
-    Key: key,
-    Body: file.buffer,
-    ContentType: file.mimetype,
-  };
+                                const params = {
+                                  Bucket: process.env.AWS_S3_BUCKET,
+                                  Key: key,
+                                  Body: file.buffer,
+                                  ContentType: file.mimetype,
+                                };
 
-  const command = new PutObjectCommand(params);
+                                const command = new PutObjectCommand(params);
 
-  try {
-    await s3Client.send(command);
-    return \`\${process.env.AWS_ENDPOINT_URL || \`https://\${process.env.AWS_S3_BUCKET}.s3.\${process.env.AWS_REGION}.amazonaws.com\`}/\${key}\`;
-  } catch (err) {
-    console.error("Failed to upload file to S3:", err);
-    throw new Error("Failed to upload file");
-  }
-};
+                                try {
+                                  await s3Client.send(command);
+                                  return \`\${process.env.AWS_ENDPOINT_URL || \`https://\${process.env.AWS_S3_BUCKET}.s3.\${process.env.AWS_REGION}.amazonaws.com\`}/\${key}\`;
+                                } catch (err) {
+                                  console.error("Failed to upload file to S3:", err);
+                                  throw new Error("Failed to upload file");
+                                }
+                              };
 
-// --- Unified Function ---
-const saveBinaryFile = async (file) => {
-  if (!file) throw new Error("No file provided");
+                              // --- Unified Function ---
+                              const saveBinaryFile = async (file) => {
+                                if (!file) throw new Error("No file provided");
 
-  if (config.cloudStore) {
-    return await uploadToS3(file);
-  } else {
-    return await saveLocally(file);
-  }
-};
+                                if (config.cloudStore) {
+                                  return await uploadToS3(file);
+                                } else {
+                                  return await saveLocally(file);
+                                }
+                              };
 
-module.exports = {
-  saveBinaryFile,
-};
+                              module.exports = {
+                                saveBinaryFile,
+                              };
 
-  `;
+                                `;
         };
 
         const uploadFileMiddleware = () => {
           return `
-  
-  const multer = require("multer");
 
-const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+                                const multer = require("multer");
 
-module.exports = upload;
+                              const storage = multer.memoryStorage();
+                              const upload = multer({ storage: storage });
 
-  `;
+                              module.exports = upload;
+
+                                `;
         };
 
         const generateAuthRoutes = () => {
           return `const express = require('express');
-                  const router = express.Router();
-                  const authController = require('../controllers/authController');
-                  const { authenticateToken } = require('../middlewares/authMiddleware');
-                  const { validateRegistration, validateLogin, validateForgotPassword, validateResetPassword, validateChangePassword } = require('../validators/authValidator');
+                                                const router = express.Router();
+                                                const authController = require('../controllers/authController');
+                                                const { authenticateToken } = require('../middlewares/authMiddleware');
+                                                const { validateRegistration, validateLogin, validateForgotPassword, validateResetPassword, validateChangePassword } = require('../validators/authValidator');
 
-                  // Public routes
-                  router.post('/register', validateRegistration, authController.register);
-                  router.post('/login', validateLogin, authController.login);
-                  router.post('/verify-email', authController.verifyEmail);
-                  router.post('/forgot-password', validateForgotPassword, authController.forgotPassword);
-                  router.post('/reset-password', validateResetPassword, authController.resetPassword);
+                                                // Public routes
+                                                router.post('/register', validateRegistration, authController.register);
+                                                router.post('/login', validateLogin, authController.login);
+                                                router.post('/verify-email', authController.verifyEmail);
+                                                router.post('/forgot-password', validateForgotPassword, authController.forgotPassword);
+                                                router.post('/reset-password', validateResetPassword, authController.resetPassword);
 
-                  // Protected routes
-                  router.get('/profile', authenticateToken, authController.getProfile);
-                  router.put('/profile', authenticateToken, authController.updateProfile);
-                  router.post('/change-password', authenticateToken, validateChangePassword, authController.changePassword);
-                  router.post('/logout', authenticateToken, authController.logout);
+                                                // Protected routes
+                                                router.get('/profile', authenticateToken, authController.getProfile);
+                                                router.put('/profile', authenticateToken, authController.updateProfile);
+                                                router.post('/change-password', authenticateToken, validateChangePassword, authController.changePassword);
+                                                router.post('/logout', authenticateToken, authController.logout);
 
-                  module.exports = router;`;
+                                                module.exports = router;`;
         };
 
         const generateAuthMiddleware = () => {
           return `const jwt = require('jsonwebtoken');
-                  const config = require('../config');
-                  const User = require('../models/User');
+                                                const config = require('../config');
+                                                const User = require('../models/User');
 
-                  // Authenticate JWT token
-                  const authenticateToken = async (req, res, next) => {
-                    try {
-                      const authHeader = req.headers['authorization'];
-                      const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+                                                // Authenticate JWT token
+                                                const authenticateToken = async (req, res, next) => {
+                                                  try {
+                                                    const authHeader = req.headers['authorization'];
+                                                    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
-                      if (!token) {
-                        return res.tokenserverError('Access token required');
-                      }
+                                                    if (!token) {
+                                                      return res.tokenserverError('Access token required');
+                                                    }
 
-                      const decoded = jwt.verify(token, config.jwt.secret);
-                      const user = await User.findById(decoded.userId).select('-password');
+                                                    const decoded = jwt.verify(token, config.jwt.secret);
+                                                    const user = await User.findById(decoded.userId).select('-password');
 
-                      if (!user) {
-                        return res.tokenserverError('Invalid token');
-                      }
+                                                    if (!user) {
+                                                      return res.tokenserverError('Invalid token');
+                                                    }
 
-                      if (user.status !== 'active') {
-                        return res.tokenserverError('Account is not active');
-                      }
+                                                    if (user.status !== 'active') {
+                                                      return res.tokenserverError('Account is not active');
+                                                    }
 
-                      req.userId = user._id;
-                      req.user = user;
-                      next();
-                    } catch (error) {
-                      if (error.name === 'TokenExpiredError') {
-                        return res.tokenserverError('Token expired');
-                      }
-                      if (error.name === 'JsonWebTokenError') {
-                        return res.tokenserverError('Invalid token');
-                      }
-                      res.tokenserverError('Authentication failed');
-                    }
-                  };
+                                                    req.userId = user._id;
+                                                    req.user = user;
+                                                    next();
+                                                  } catch (error) {
+                                                    if (error.name === 'TokenExpiredError') {
+                                                      return res.tokenserverError('Token expired');
+                                                    }
+                                                    if (error.name === 'JsonWebTokenError') {
+                                                      return res.tokenserverError('Invalid token');
+                                                    }
+                                                    res.tokenserverError('Authentication failed');
+                                                  }
+                                                };
 
-                  // Check if user has required role
-                  const requireRole = (roles) => {
-                    return (req, res, next) => {
-                      if (!roles.includes(req.user.role)) {
-                        return res.tokenserverError('Insufficient permissions');
-                      }
-                      next();
-                    };
-                  };
+                                                // Check if user has required role
+                                                const requireRole = (roles) => {
+                                                  return (req, res, next) => {
+                                                    if (!roles.includes(req.user.role)) {
+                                                      return res.tokenserverError('Insufficient permissions');
+                                                    }
+                                                    next();
+                                                  };
+                                                };
 
-                  module.exports = {
-                    authenticateToken,
-                    requireRole
-                  };`;
+                                                module.exports = {
+                                                  authenticateToken,
+                                                  requireRole
+                                                };`;
         };
 
         const generateAuthValidators = () => {
           return `const { body } = require('express-validator');
 
-                  // Registration validation
-                  const validateRegistration = [
-                    body('name')
-                      .notEmpty().withMessage('Name is required')
-                      .isLength({ min: 2, max: 50 }).withMessage('Name must be between 2 and 50 characters')
-                      .trim(),
+                                                // Registration validation
+                                                const validateRegistration = [
+                                                  body('name')
+                                                    .notEmpty().withMessage('Name is required')
+                                                    .isLength({ min: 2, max: 50 }).withMessage('Name must be between 2 and 50 characters')
+                                                    .trim(),
 
-                    body('email')
-                      .notEmpty().withMessage('Email is required')
-                      .isEmail().withMessage('Please provide a valid email')
-                      .normalizeEmail(),
+                                                  body('email')
+                                                    .notEmpty().withMessage('Email is required')
+                                                    .isEmail().withMessage('Please provide a valid email')
+                                                    .normalizeEmail(),
 
-                    body('password')
-                      .notEmpty().withMessage('Password is required')
-                      .isLength({ min: 6 }).withMessage('Password must be at least 6 characters long')
-                      .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Password must contain at least one lowercase letter, one uppercase letter, and one number'),
+                                                  body('password')
+                                                    .notEmpty().withMessage('Password is required')
+                                                    .isLength({ min: 6 }).withMessage('Password must be at least 6 characters long')
+                                                    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Password must contain at least one lowercase letter, one uppercase letter, and one number'),
 
-                    body('phone')
-                      .optional()
-                      .isMobilePhone().withMessage('Please provide a valid phone number')
-                  ];
+                                                  body('phone')
+                                                    .optional()
+                                                    .isMobilePhone().withMessage('Please provide a valid phone number')
+                                                ];
 
-                  // Login validation
-                  const validateLogin = [
-                    body('email')
-                      .notEmpty().withMessage('Email is required')
-                      .isEmail().withMessage('Please provide a valid email')
-                      .normalizeEmail(),
+                                                // Login validation
+                                                const validateLogin = [
+                                                  body('email')
+                                                    .notEmpty().withMessage('Email is required')
+                                                    .isEmail().withMessage('Please provide a valid email')
+                                                    .normalizeEmail(),
 
-                    body('password')
-                      .notEmpty().withMessage('Password is required')
-                  ];
+                                                  body('password')
+                                                    .notEmpty().withMessage('Password is required')
+                                                ];
 
-                  // Forgot password validation
-                  const validateForgotPassword = [
-                    body('email')
-                      .notEmpty().withMessage('Email is required')
-                      .isEmail().withMessage('Please provide a valid email')
-                      .normalizeEmail()
-                  ];
+                                                // Forgot password validation
+                                                const validateForgotPassword = [
+                                                  body('email')
+                                                    .notEmpty().withMessage('Email is required')
+                                                    .isEmail().withMessage('Please provide a valid email')
+                                                    .normalizeEmail()
+                                                ];
 
-                  // Reset password validation
-                  const validateResetPassword = [
-                    body('email')
-                      .notEmpty().withMessage('Email is required')
-                      .isEmail().withMessage('Please provide a valid email')
-                      .normalizeEmail(),
+                                                // Reset password validation
+                                                const validateResetPassword = [
+                                                  body('email')
+                                                    .notEmpty().withMessage('Email is required')
+                                                    .isEmail().withMessage('Please provide a valid email')
+                                                    .normalizeEmail(),
 
-                    body('otp')
-                      .notEmpty().withMessage('OTP is required')
-                      .isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits')
-                      .isNumeric().withMessage('OTP must contain only numbers'),
+                                                  body('otp')
+                                                    .notEmpty().withMessage('OTP is required')
+                                                    .isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits')
+                                                    .isNumeric().withMessage('OTP must contain only numbers'),
 
-                    body('newPassword')
-                      .notEmpty().withMessage('New password is required')
-                      .isLength({ min: 6 }).withMessage('Password must be at least 6 characters long')
-                      .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Password must contain at least one lowercase letter, one uppercase letter, and one number')
-                  ];
+                                                  body('newPassword')
+                                                    .notEmpty().withMessage('New password is required')
+                                                    .isLength({ min: 6 }).withMessage('Password must be at least 6 characters long')
+                                                    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Password must contain at least one lowercase letter, one uppercase letter, and one number')
+                                                ];
 
-                  // Change password validation
-                  const validateChangePassword = [
-                    body('currentPassword')
-                      .notEmpty().withMessage('Current password is required'),
+                                                // Change password validation
+                                                const validateChangePassword = [
+                                                  body('currentPassword')
+                                                    .notEmpty().withMessage('Current password is required'),
 
-                    body('newPassword')
-                      .notEmpty().withMessage('New password is required')
-                      .isLength({ min: 6 }).withMessage('Password must be at least 6 characters long')
-                      .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Password must contain at least one lowercase letter, one uppercase letter, and one number')
-                  ];
+                                                  body('newPassword')
+                                                    .notEmpty().withMessage('New password is required')
+                                                    .isLength({ min: 6 }).withMessage('Password must be at least 6 characters long')
+                                                    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Password must contain at least one lowercase letter, one uppercase letter, and one number')
+                                                ];
 
-                  module.exports = {
-                    validateRegistration,
-                    validateLogin,
-                    validateForgotPassword,
-                    validateResetPassword,
-                    validateChangePassword
-                  };`;
+                                                module.exports = {
+                                                  validateRegistration,
+                                                  validateLogin,
+                                                  validateForgotPassword,
+                                                  validateResetPassword,
+                                                  validateChangePassword
+                                                };`;
         };
 
         const generateerrorHandler = () => {
           return `
 
 
-                      // middlewares/errorHandler.js
+                                                    // middlewares/errorHandler.js
 
-      /**
-       * Global error handling middleware
-       * Captures any errors passed via next(err) and formats them with your response middleware
-       */
-      const errorHandler = (err, req, res, next) => {
-        console.error("🔥 Error caught by errorHandler:", err);
+                                    /**
+                                     * Global error handling middleware
+                                     * Captures any errors passed via next(err) and formats them with your response middleware
+                                     */
+                                    const errorHandler = (err, req, res, next) => {
+                                      console.error("🔥 Error caught by errorHandler:", err);
 
-        // Handle known validation errors from express-validator or Mongoose
-        if (err.name === "ValidationError") {
-          return res.validationError(err.errors, "Validation Error");
-        }
+                                      // Handle known validation errors from express-validator or Mongoose
+                                      if (err.name === "ValidationError") {
+                                        return res.validationError(err.errors, "Validation Error");
+                                      }
 
-        // Handle duplicate key error from MongoDB/Mongoose
-        if (err.code && err.code === 11000) {
-          return res.badRequest(err.keyValue, "Duplicate Key Error");
-        }
+                                      // Handle duplicate key error from MongoDB/Mongoose
+                                      if (err.code && err.code === 11000) {
+                                        return res.badRequest(err.keyValue, "Duplicate Key Error");
+                                      }
 
-        // If response helpers are available, use serverError
-        if (res.serverError) {
-          return res.serverError(err.message || err, "Internal Server Error");
-        }
+                                      // If response helpers are available, use serverError
+                                      if (res.serverError) {
+                                        return res.serverError(err.message || err, "Internal Server Error");
+                                      }
 
-        // Fallback (in case response middleware wasn't applied)
-        res.status(500).json({
-          success: false,
-          message: "Internal Server Error",
-          error: err.message || err,
-        });
-      };
+                                      // Fallback (in case response middleware wasn't applied)
+                                      res.status(500).json({
+                                        success: false,
+                                        message: "Internal Server Error",
+                                        error: err.message || err,
+                                      });
+                                    };
 
-      module.exports = errorHandler;
+                                    module.exports = errorHandler;
 
-                      `;
+                                                    `;
         };
 
         const generateasyncHandleMiddleware = () => {
           return `
-// middlewares/asyncHandleMiddleware.js
+                              // middlewares/asyncHandleMiddleware.js
 
-/**
- * Wrap async route handlers to avoid repetitive try/catch blocks.
- * Passes errors to Express error handler via \`next()\`.
- *
- * @param {Function} fn - Express route handler (req, res, next)
- * @returns {Function} Wrapped route handler
- */
-const asyncHandler = (fn) => {
-  return (req, res, next) => {
-    Promise.resolve(fn(req, res, next)).catch(next);
-  };
-};
+                              /**
+                               * Wrap async route handlers to avoid repetitive try/catch blocks.
+                               * Passes errors to Express error handler via \`next()\`.
+                               *
+                               * @param {Function} fn - Express route handler (req, res, next)
+                               * @returns {Function} Wrapped route handler
+                               */
+                              const asyncHandler = (fn) => {
+                                return (req, res, next) => {
+                                  Promise.resolve(fn(req, res, next)).catch(next);
+                                };
+                              };
 
-module.exports = asyncHandler;
-`;
+                              module.exports = asyncHandler;
+                              `;
         };
 
         const generateResponseMiddleware = () => {
           return `const responseMiddleware = (req, res, next) => {
-                    res.successResponse = (data, message = "Request successful") => {
-                      res.status(200).json({
-                        success: true,
-                        message,
-                        data,
-                      });
-                    };
+                                                  res.successResponse = (data, message = "Request successful") => {
+                                                    res.status(200).json({
+                                                      success: true,
+                                                      message,
+                                                      data,
+                                                    });
+                                                  };
 
-                    res.badRequest = (error, message = "Bad Request") => {
-                      res.status(400).json({
-                        success: false,
-                        message,
-                        error,
-                      });
-                    };
+                                                  res.badRequest = (error, message = "Bad Request") => {
+                                                    res.status(400).json({
+                                                      success: false,
+                                                      message,
+                                                      error,
+                                                    });
+                                                  };
 
-                    res.notFound = (error, message = "Not Found") => {
-                      res.status(404).json({
-                        success: false,
-                        message,
-                        error,
-                      });
-                    };
+                                                  res.notFound = (error, message = "Not Found") => {
+                                                    res.status(404).json({
+                                                      success: false,
+                                                      message,
+                                                      error,
+                                                    });
+                                                  };
 
-                    res.validationError = (error, message = "Validation Error") => {
-                      res.status(422).json({
-                        success: false,
-                        message,
-                        error,
-                      });
-                    };
+                                                  res.validationError = (error, message = "Validation Error") => {
+                                                    res.status(422).json({
+                                                      success: false,
+                                                      message,
+                                                      error,
+                                                    });
+                                                  };
 
-                    res.serverError = (error, message = "Internal Server Error") => {
-                      res.status(500).json({
-                        success: false,
-                        message,
-                        error,
-                      });
-                    };
+                                                  res.serverError = (error, message = "Internal Server Error") => {
+                                                    res.status(500).json({
+                                                      success: false,
+                                                      message,
+                                                      error,
+                                                    });
+                                                  };
 
-                    res.tokenvalidationError = (errors) => {
-                      res.status(401).json({
-                        success: false,
-                        message: "Validation Error",
-                        errors,
-                      });
-                    };
+                                                  res.tokenvalidationError = (errors) => {
+                                                    res.status(401).json({
+                                                      success: false,
+                                                      message: "Validation Error",
+                                                      errors,
+                                                    });
+                                                  };
 
-                    res.tokenserverError = (err, message = "Internal Server Error") => {
-                      res.status(401).json({
-                        success: false,
-                        message,
-                        errors: err,
-                      });
-                    };
+                                                  res.tokenserverError = (err, message = "Internal Server Error") => {
+                                                    res.status(401).json({
+                                                      success: false,
+                                                      message,
+                                                      errors: err,
+                                                    });
+                                                  };
 
-                    next();
-                  };
+                                                  next();
+                                                };
 
-                  module.exports = responseMiddleware;`;
+                                                module.exports = responseMiddleware;`;
         };
 
         const generateModelCode = (model) => {
@@ -1374,134 +1472,141 @@ module.exports = asyncHandler;
           }
 
           controllerCode += `
-        const asyncHandler = require("../middlewares/asyncHandleMiddleware");\n\n`;
+                                      const asyncHandler = require("../middlewares/asyncHandleMiddleware");\n\n`;
 
           controllerCode += `const  saveBinaryFile  = require("../utils/saveBinaryUtils");\n\n`;
           // Create
           controllerCode += `// Create a new ${lowerName}
-            exports.create${model.name} = [${
+                                          exports.create${model.name} = [${
             includeValidation ? `validate${model.name}, ` : ""
           }
-            asyncHandler(async (req, res) => {
-                ${
-                  includeValidation
-                    ? `
-                const errors = validationResult(req);
-                if (!errors.isEmpty()) {
-                    return res.validationError(errors.array());
-                }`
-                    : ""
-                }
+                                          asyncHandler(async (req, res) => {
+                                              ${
+                                                includeValidation
+                                                  ? `
+                                              const errors = validationResult(req);
+                                              if (!errors.isEmpty()) {
+                                                  return res.validationError(errors.array());
+                                              }`
+                                                  : ""
+                                              }
 
-                                  let fileUrl;
+                                                                let fileUrl;
 
-                 ${
-                   hasImageField
-                     ? `
-    if (req.file) {
-      fileUrl = await saveBinaryFile(req.file);
-    }
-          }`
-                     : ""
-                 }
+                                               ${
+                                                 hasImageField
+                                                   ? `
+                                  if (req.file) {
+                                    fileUrl = await saveBinaryFile(req.file);
+                                  }
+                                        }`
+                                                   : ""
+                                               }
 
 
-    const ${lowerName} = new ${model.name}({
-      ...req.body,
-      ${
-        hasImageField
-          ? `${model.fields.find((f) => f.isImage).name}: fileUrl || undefined,`
-          : ""
-      }
-    });
-                    await ${lowerName}.save();
-                res.successResponse(${lowerName}, '${
+                                  const ${lowerName} = new ${model.name}({
+                                    ...req.body,
+                                    ${
+                                      hasImageField
+                                        ? `${
+                                            model.fields.find((f) => f.isImage)
+                                              .name
+                                          }: fileUrl || undefined,`
+                                        : ""
+                                    }
+                                  });
+                                                  await ${lowerName}.save();
+                                              res.successResponse(${lowerName}, '${
             model.name
           } created successfully');
-            })];\n\n`;
+                                          })];\n\n`;
 
           // Get all
           controllerCode += `// Get all ${lowerPlural}
-            exports.get${pluralName} = asyncHandler(async (req, res) => {
-                const page = parseInt(req.query.page) || 1;
-                const limit = parseInt(req.query.limit) || 10;
-                const skip = (page - 1) * limit;
+                                          exports.get${pluralName} = asyncHandler(async (req, res) => {
+                                              const page = parseInt(req.query.page) || 1;
+                                              const limit = parseInt(req.query.limit) || 10;
+                                              const skip = (page - 1) * limit;
 
-                const ${lowerPlural} = await ${model.name}.find(req.query.filter || {})
-                    .skip(skip)
-                    .limit(limit)
-                    .select(req.query.fields || "")
-                    .populate(req.query.populate || "");
+                                              const ${lowerPlural} = await ${model.name}.find(req.query.filter || {})
+                                                  .skip(skip)
+                                                  .limit(limit)
+                                                  .select(req.query.fields || "")
+                                                  .populate(req.query.populate || "");
 
-                const total = await ${model.name}.countDocuments(req.query.filter || {});
-                const totalPages = Math.ceil(total / limit);
+                                              const total = await ${model.name}.countDocuments(req.query.filter || {});
+                                              const totalPages = Math.ceil(total / limit);
 
-                res.successResponse({
-                    ${lowerPlural},
-                    pagination: { currentPage: page, totalPages, totalItems: total, itemsPerPage: limit }
-                });
-            });\n\n`;
+                                              res.successResponse({
+                                                  ${lowerPlural},
+                                                  pagination: { currentPage: page, totalPages, totalItems: total, itemsPerPage: limit }
+                                              });
+                                          });\n\n`;
 
           // Get by ID
           controllerCode += `// Get a single ${lowerName} by ID
-            exports.get${model.name}ById = asyncHandler(async (req, res) => {
-                const ${lowerName} = await ${model.name}.findById(req.params.id)
-                    .select(req.query.fields || "")
-                    .populate(req.query.populate || "");
+                                          exports.get${model.name}ById = asyncHandler(async (req, res) => {
+                                              const ${lowerName} = await ${model.name}.findById(req.params.id)
+                                                  .select(req.query.fields || "")
+                                                  .populate(req.query.populate || "");
 
-                if (!${lowerName}) return res.notFound('${model.name} not found');
-                res.successResponse(${lowerName});
-            });\n\n`;
+                                              if (!${lowerName}) return res.notFound('${model.name} not found');
+                                              res.successResponse(${lowerName});
+                                          });\n\n`;
 
           // Update
           controllerCode += `// Update a ${lowerName} by ID
-            exports.update${model.name} = [${
+                                          exports.update${model.name} = [${
             includeValidation ? `validate${model.name}, ` : ""
           }
-            asyncHandler(async (req, res) => {
-                ${
-                  includeValidation
-                    ? `
-                const errors = validationResult(req);
-                if (!errors.isEmpty()) {
-                    return res.validationError(errors.array());
-                }`
-                    : ""
-                }
+                                          asyncHandler(async (req, res) => {
+                                              ${
+                                                includeValidation
+                                                  ? `
+                                              const errors = validationResult(req);
+                                              if (!errors.isEmpty()) {
+                                                  return res.validationError(errors.array());
+                                              }`
+                                                  : ""
+                                              }
 
-                  let updateData = { ...req.body };
+                                                let updateData = { ...req.body };
 
-    ${
-      hasImageField
-        ? `
-    if (req.file) {
-      const fileUrl = await saveBinaryFile(req.file);
-      updateData.${model.fields.find((f) => f.isImage).name} = fileUrl;
-    }`
-        : ""
-    }
+                                  ${
+                                    hasImageField
+                                      ? `
+                                  if (req.file) {
+                                    const fileUrl = await saveBinaryFile(req.file);
+                                    updateData.${
+                                      model.fields.find((f) => f.isImage).name
+                                    } = fileUrl;
+                                  }`
+                                      : ""
+                                  }
 
-    const ${lowerName} = await ${model.name}.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true, runValidators: true }
-    );
+                                  const ${lowerName} = await ${
+            model.name
+          }.findByIdAndUpdate(
+                                    req.params.id,
+                                    updateData,
+                                    { new: true, runValidators: true }
+                                  );
 
-                if (!${lowerName}) return res.notFound('${
+                                              if (!${lowerName}) return res.notFound('${
             model.name
           } not found');
-                res.successResponse(${lowerName}, '${
+                                              res.successResponse(${lowerName}, '${
             model.name
           } updated successfully');
-            })];\n\n`;
+                                          })];\n\n`;
 
           // Delete (hard delete, can add soft-delete flag if needed)
           controllerCode += `// Delete a ${lowerName} by ID
-            exports.delete${model.name} = asyncHandler(async (req, res) => {
-                const ${lowerName} = await ${model.name}.findByIdAndDelete(req.params.id);
-                if (!${lowerName}) return res.notFound('${model.name} not found');
-                res.successResponse(null, '${model.name} deleted successfully');
-            });\n`;
+                                          exports.delete${model.name} = asyncHandler(async (req, res) => {
+                                              const ${lowerName} = await ${model.name}.findByIdAndDelete(req.params.id);
+                                              if (!${lowerName}) return res.notFound('${model.name} not found');
+                                              res.successResponse(null, '${model.name} deleted successfully');
+                                          });\n`;
 
           return controllerCode;
         };
@@ -1812,49 +1917,49 @@ module.exports = asyncHandler;
 
           // Add package.json
           const packageJson = `{
-  "name": "mern-backend",
-  "version": "1.0.0",
-  "description": "Generated MERN backend",
-  "main": "server.js",
-  "scripts": {
-    "start": "NODE_ENV=production node server.js",
-    "dev": "NODE_ENV=development nodemon server.js",
-    "test": "NODE_ENV=test jest"
-  },
-  "dependencies": {
-    "@aws-sdk/client-s3": "^3.637.0",       
-    "bcrypt": "^5.1.1",
-    "body-parser": "^1.20.2",              
-    "compression": "^1.7.4",
-    "cookie-parser": "^1.4.6",              
-    "cors": "^2.8.5",
-    "dayjs": "^1.11.10",                  
-    "dotenv": "^16.3.1",
-    "express": "^4.18.2",
-    "express-rate-limit": "^7.2.0",        
-    "express-validator": "^7.0.1",
-    "helmet": "^7.0.0",
-    "http-errors": "^2.0.0",              
-    "joi": "^17.11.0",                    
-    "jsonwebtoken": "^9.0.2",
-    "mongoose": "^7.5.0",
-    "morgan": "^1.10.0",
-    "multer": "^1.4.5-lts.1",          
-    "nodemailer": "^6.9.7",
-    "pino": "^8.19.0",                    
-    "twilio": "^4.18.1",
-    "uuid": "^9.0.1",                      
-    "winston": "^3.11.0"                   
-  },
-  "devDependencies": {
-    "cross-env": "^7.0.3",                 
-    "jest": "^29.7.0",
-    "nodemon": "^3.0.1",
-    "supertest": "^6.3.3"
-  }
-}
+                                "name": "mern-backend",
+                                "version": "1.0.0",
+                                "description": "Generated MERN backend",
+                                "main": "server.js",
+                                "scripts": {
+                                  "start": "NODE_ENV=production node server.js",
+                                  "dev": "NODE_ENV=development nodemon server.js",
+                                  "test": "NODE_ENV=test jest"
+                                },
+                                "dependencies": {
+                                  "@aws-sdk/client-s3": "^3.637.0",
+                                  "bcrypt": "^5.1.1",
+                                  "body-parser": "^1.20.2",
+                                  "compression": "^1.7.4",
+                                  "cookie-parser": "^1.4.6",
+                                  "cors": "^2.8.5",
+                                  "dayjs": "^1.11.10",
+                                  "dotenv": "^16.3.1",
+                                  "express": "^4.18.2",
+                                  "express-rate-limit": "^7.2.0",
+                                  "express-validator": "^7.0.1",
+                                  "helmet": "^7.0.0",
+                                  "http-errors": "^2.0.0",
+                                  "joi": "^17.11.0",
+                                  "jsonwebtoken": "^9.0.2",
+                                  "mongoose": "^7.5.0",
+                                  "morgan": "^1.10.0",
+                                  "multer": "^1.4.5-lts.1",
+                                  "nodemailer": "^6.9.7",
+                                  "pino": "^8.19.0",
+                                  "twilio": "^4.18.1",
+                                  "uuid": "^9.0.1",
+                                  "winston": "^3.11.0"
+                                },
+                                "devDependencies": {
+                                  "cross-env": "^7.0.3",
+                                  "jest": "^29.7.0",
+                                  "nodemon": "^3.0.1",
+                                  "supertest": "^6.3.3"
+                                }
+                              }
 
-`;
+                              `;
           zip.file("package.json", packageJson);
 
           // Generate zip file
@@ -1885,6 +1990,126 @@ module.exports = asyncHandler;
             document.body.removeChild(script);
           };
         }, []);
+
+        console.log(generatedCode);
+
+        const fileTree = {
+          "/": {
+            "server.js": generatedCode.mounting,
+            "config.js": generatedCode.config,
+            database: {
+              "db.js": generatedCode.db,
+            },
+            models: {
+              ...(includeAuth
+                ? {
+                    "User.js": generatedCode.authModels?.userModel,
+                    "OTP.js": generatedCode.authModels?.otpModel,
+                  }
+                : {}),
+              ...Object.fromEntries(
+                models.map((m) => [
+                  `${m.name}.js`,
+                  generatedCode.models[m.name],
+                ])
+              ),
+            },
+            controllers: {
+              ...(includeAuth
+                ? {
+                    "authController.js":
+                      generatedCode.authControllers?.authController,
+                  }
+                : {}),
+              ...Object.fromEntries(
+                models.map((m) => [
+                  `${m.name}Controller.js`,
+                  generatedCode.controllers[m.name],
+                ])
+              ),
+            },
+            routes: {
+              ...(includeAuth
+                ? { "authRoutes.js": generatedCode.authRoutes }
+                : {}),
+              ...Object.fromEntries(
+                models.map((m) => [
+                  `${m.name}Routes.js`,
+                  generatedCode.routes[m.name],
+                ])
+              ),
+            },
+            validators: {
+              ...(includeAuth && generatedCode.authValidators
+                ? { "authValidator.js": generatedCode.authValidators }
+                : {}),
+              ...Object.fromEntries(
+                models.map((m) => [
+                  `${m.name}Validator.js`,
+                  generatedCode.validators[m.name],
+                ])
+              ),
+            },
+
+            middlewares: {
+              "responseMiddleware.js": generatedCode.middleware,
+              "asyncHandleMiddleware.js": generatedCode.asyncHandleMiddleware,
+              "errorHandler.js": generatedCode.errorHandler,
+              "multer.js": generatedCode.multer,
+              ...(includeAuth
+                ? { "authMiddleware.js": generatedCode.authMiddleware }
+                : {}),
+            },
+            utils: generatedCode.utils,
+            ".env.development": generatedCode.envFiles?.development,
+            ".env.production": generatedCode.envFiles?.production,
+            ".env.sample": generatedCode.envFiles?.sample,
+          },
+        };
+
+        const FileNode = ({ name, node, onSelect, level = 0 }) => {
+          const [isOpen, setIsOpen] = useState(true);
+          const isFolder = typeof node === "object" && !name.endsWith(".js");
+
+          return (
+            <div className={`ml-${level * 4}`}>
+              {isFolder ? (
+                <div>
+                  <div
+                    className="flex items-center justify-between font-semibold cursor-pointer text-white hover:text-blue-500 transition"
+                    onClick={() => setIsOpen(!isOpen)}
+                  >
+                    <span className="text-white">{name}/</span>
+                    <span className="text-white">{isOpen ? "▾" : "▸"}</span>
+                  </div>
+                  {isOpen && (
+                    <div className="ml-4 mt-1 space-y-1">
+                      {Object.entries(node).map(([childName, childNode]) => (
+                        <FileNode
+                          key={childName}
+                          name={childName}
+                          node={childNode}
+                          onSelect={onSelect}
+                          level={level + 1}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div
+                  className="cursor-pointer text-white hover:bg-blue-100 dark:hover:bg-blue-900 rounded px-2 py-1 transition"
+                  onClick={() => onSelect(name, node)}
+                >
+                  {name}
+                </div>
+              )}
+            </div>
+          );
+        };
+
+        console.log(models);
+        console.log(currentModel);
 
         return (
           <div className="container mx-auto px-6 py-10">
@@ -2032,7 +2257,7 @@ module.exports = asyncHandler;
                       <input
                         type="checkbox"
                         checked={includeAuth}
-                        onChange={(e) => setIncludeAuth(e.target.checked)}
+                        onClick={() => handleIncludeAuth()}
                         className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
                       />
                       <span className="text-gray-700 font-medium">
@@ -2469,173 +2694,39 @@ module.exports = asyncHandler;
                   </button>
                 </div>
 
-                {/* Code Preview Section */}
-                {Object.keys(generatedCode).length > 0 &&
-                  (models.length > 0 || includeAuth) && (
-                    <div className="bg-white/90 backdrop-blur p-8 rounded-2xl shadow-lg border border-gray-100">
-                      <h2 className="text-2xl font-bold mb-6 text-gray-800">
-                        Generated Code
-                      </h2>
-
-                      {/* Tabs for code preview, now dynamic */}
-                      <div className="flex flex-wrap gap-2 border-b border-gray-200 mb-4 overflow-x-auto">
-                        <button
-                          className={`py-2 px-4 rounded-t-lg text-sm font-medium transition ${
-                            activeTab === "mounting"
-                              ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow"
-                              : "text-gray-500 hover:text-gray-800"
-                          }`}
-                          onClick={() => setActiveTab("mounting")}
-                        >
-                          Server.js
-                        </button>
-                        <button
-                          className={`py-2 px-4 rounded-t-lg text-sm font-medium transition ${
-                            activeTab === "config"
-                              ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow"
-                              : "text-gray-500 hover:text-gray-800"
-                          }`}
-                          onClick={() => setActiveTab("config")}
-                        >
-                          Config
-                        </button>
-                        <button
-                          className={`py-2 px-4 rounded-t-lg text-sm font-medium transition ${
-                            activeTab === "db"
-                              ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow"
-                              : "text-gray-500 hover:text-gray-800"
-                          }`}
-                          onClick={() => setActiveTab("db")}
-                        >
-                          Database
-                        </button>
-                        <button
-                          className={`py-2 px-4 rounded-t-lg text-sm font-medium transition ${
-                            activeTab === "middleware"
-                              ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow"
-                              : "text-gray-500 hover:text-gray-800"
-                          }`}
-                          onClick={() => setActiveTab("middleware")}
-                        >
-                          Middleware
-                        </button>
-                        {includeAuth && (
-                          <>
-                            <button
-                              className={`py-2 px-4 rounded-t-lg text-sm font-medium transition ${
-                                activeTab === "auth-user"
-                                  ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow"
-                                  : "text-gray-500 hover:text-gray-800"
-                              }`}
-                              onClick={() => setActiveTab("auth-user")}
-                            >
-                              User Model
-                            </button>
-                            <button
-                              className={`py-2 px-4 rounded-t-lg text-sm font-medium transition ${
-                                activeTab === "auth-otp"
-                                  ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow"
-                                  : "text-gray-500 hover:text-gray-800"
-                              }`}
-                              onClick={() => setActiveTab("auth-otp")}
-                            >
-                              OTP Model
-                            </button>
-                            <button
-                              className={`py-2 px-4 rounded-t-lg text-sm font-medium transition ${
-                                activeTab === "auth-controller"
-                                  ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow"
-                                  : "text-gray-500 hover:text-gray-800"
-                              }`}
-                              onClick={() => setActiveTab("auth-controller")}
-                            >
-                              Auth Controller
-                            </button>
-                            <button
-                              className={`py-2 px-4 rounded-t-lg text-sm font-medium transition ${
-                                activeTab === "auth-routes"
-                                  ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow"
-                                  : "text-gray-500 hover:text-gray-800"
-                              }`}
-                              onClick={() => setActiveTab("auth-routes")}
-                            >
-                              Auth Routes
-                            </button>
-                          </>
-                        )}
-                        {models.map((model, index) => (
-                          <button
-                            key={index}
-                            className={`py-2 px-4 rounded-t-lg text-sm font-medium transition ${
-                              activeTab === `model-${model.name}`
-                                ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow"
-                                : "text-gray-500 hover:text-gray-800"
-                            }`}
-                            onClick={() => setActiveTab(`model-${model.name}`)}
-                          >
-                            {model.name} Model
-                          </button>
-                        ))}
-                      </div>
-
-                      <div className="relative">
-                        <pre className="bg-gray-900 text-gray-100 p-6 rounded-lg overflow-x-auto font-mono text-sm shadow-inner">
-                          {activeTab === "mounting" && generatedCode.mounting}
-                          {activeTab === "config" && generatedCode.config}
-                          {activeTab === "db" && generatedCode.db}
-                          {activeTab === "middleware" &&
-                            generatedCode.middleware}
-                          {activeTab === "auth-user" &&
-                            generatedCode.authModels.userModel}
-                          {activeTab === "auth-otp" &&
-                            generatedCode.authModels.otpModel}
-                          {activeTab === "auth-controller" &&
-                            generatedCode.authControllers.authController}
-                          {activeTab === "auth-routes" &&
-                            generatedCode.authRoutes}
-                          {activeTab.startsWith("model-") &&
-                            generatedCode.models[
-                              activeTab.replace("model-", "")
-                            ]}
-                        </pre>
-                        <button
-                          onClick={() => {
-                            if (activeTab === "mounting")
-                              copyToClipboard(generatedCode.mounting);
-                            if (activeTab === "config")
-                              copyToClipboard(generatedCode.config);
-                            if (activeTab === "db")
-                              copyToClipboard(generatedCode.db);
-                            if (activeTab === "middleware")
-                              copyToClipboard(generatedCode.middleware);
-                            if (activeTab === "auth-user")
-                              copyToClipboard(
-                                generatedCode.authModels.userModel
-                              );
-                            if (activeTab === "auth-otp")
-                              copyToClipboard(
-                                generatedCode.authModels.otpModel
-                              );
-                            if (activeTab === "auth-controller")
-                              copyToClipboard(
-                                generatedCode.authControllers.authController
-                              );
-                            if (activeTab === "auth-routes")
-                              copyToClipboard(generatedCode.authRoutes);
-                            if (activeTab.startsWith("model-"))
-                              copyToClipboard(
-                                generatedCode.models[
-                                  activeTab.replace("model-", "")
-                                ]
-                              );
-                          }}
-                          className="absolute top-3 right-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow hover:opacity-90 transition"
-                        >
-                          Copy
-                        </button>
-                      </div>
+                <div className="flex h-full gap-4">
+                  {/* Sidebar - File Tree */}
+                  <div className=" w-[20%]  bg-gray-50 dark:bg-gray-900 p-4 overflow-y-auto rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+                    <h3 className="text-lg font-bold mb-4 text-gray-700 dark:text-gray-200">
+                      Project Files
+                    </h3>
+                    <div className="space-y-1">
+                      {Object.entries(fileTree["/"]).map(([name, node]) => (
+                        <FileNode
+                          key={name}
+                          name={name}
+                          node={node}
+                          onSelect={(fileName, fileCode) =>
+                            setSelectedFile({ fileName, fileCode })
+                          }
+                        />
+                      ))}
                     </div>
-                  )}
+                  </div>
+
+                  {/* Code Preview */}
+                  <div className="flex-1 w-[80%] relative">
+                    {selectedFile.fileCode ? (
+                      <pre className="bg-gray-900 text-gray-100 p-6 rounded-lg overflow-x-auto font-mono text-sm shadow-inner">
+                        {selectedFile.fileCode}
+                      </pre>
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-gray-400 italic">
+                        Select a file to view code
+                      </div>
+                    )}
+                  </div>
+                </div>
               </>
             )}
           </div>

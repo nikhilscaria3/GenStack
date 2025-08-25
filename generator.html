@@ -161,71 +161,82 @@
         };
 
         const handleIncludeAuth = () => {
-          const newModels = [
-            ...models, // keep existing models
-            {
-              name: "User",
-              fields: [
-                { name: "name", type: "String", required: true, trim: true },
-                {
-                  name: "email",
-                  type: "String",
-                  required: true,
-                  unique: true,
-                  lowercase: true,
-                  trim: true,
-                },
-                {
-                  name: "password",
-                  type: "String",
-                  required: true,
-                  minlength: 6,
-                },
-                { name: "phone", type: "String", trim: true },
-                { name: "isEmailVerified", type: "Boolean", default: false },
-                { name: "isPhoneVerified", type: "Boolean", default: false },
-                { name: "avatar", type: "String", default: "" },
-                {
-                  name: "role",
-                  type: "String",
-                  enum: ["user", "admin"],
-                  default: "user",
-                },
-                {
-                  name: "status",
-                  type: "String",
-                  enum: ["active", "inactive", "suspended"],
-                  default: "active",
-                },
-                { name: "lastLogin", type: "Date" },
-              ],
-            },
-            {
-              name: "OTP",
-              fields: [
-                { name: "email", type: "String", required: true },
-                { name: "phone", type: "String" },
-                { name: "otp", type: "String", required: true },
-                {
-                  name: "type",
-                  type: "String",
-                  enum: [
-                    "email-verification",
-                    "phone-verification",
-                    "password-reset",
-                    "2fa",
-                  ],
-                  required: true,
-                },
-                { name: "expiresAt", type: "Date", required: true },
-                { name: "used", type: "Boolean", default: false },
-              ],
-            },
-          ];
+          if (!includeAuth) {
+            // Add auth models
+            const authModels = [
+              {
+                name: "User",
+                fields: [
+                  { name: "name", type: "String", required: true, trim: true },
+                  {
+                    name: "email",
+                    type: "String",
+                    required: true,
+                    unique: true,
+                    lowercase: true,
+                    trim: true,
+                  },
+                  {
+                    name: "password",
+                    type: "String",
+                    required: true,
+                    minlength: 6,
+                  },
+                  { name: "phone", type: "String", trim: true },
+                  { name: "isEmailVerified", type: "Boolean", default: false },
+                  { name: "isPhoneVerified", type: "Boolean", default: false },
+                  { name: "avatar", type: "String", default: "" },
+                  {
+                    name: "role",
+                    type: "String",
+                    enum: ["user", "admin"],
+                    default: "user",
+                  },
+                  {
+                    name: "status",
+                    type: "String",
+                    enum: ["active", "inactive", "suspended"],
+                    default: "active",
+                  },
+                  { name: "lastLogin", type: "Date" },
+                ],
+              },
+              {
+                name: "OTP",
+                fields: [
+                  { name: "email", type: "String", required: true },
+                  { name: "phone", type: "String" },
+                  { name: "otp", type: "String", required: true },
+                  {
+                    name: "type",
+                    type: "String",
+                    enum: [
+                      "email-verification",
+                      "phone-verification",
+                      "password-reset",
+                      "2fa",
+                    ],
+                    required: true,
+                  },
+                  { name: "expiresAt", type: "Date", required: true },
+                  { name: "used", type: "Boolean", default: false },
+                ],
+              },
+            ];
 
-          setModels(newModels);
-          generateAllCode(newModels);
-          setIncludeAuth(true);
+            const newModels = [...models, ...authModels];
+            setModels(newModels);
+            generateAllCode(newModels);
+            setIncludeAuth(true);
+          } else {
+            // Remove auth models
+            const newModels = models.filter(
+              (m) => m.name !== "User" && m.name !== "OTP"
+            );
+            setModels(newModels);
+            generateAllCode(newModels);
+            setIncludeAuth(false);
+          }
         };
 
         const removeField = (index) => {

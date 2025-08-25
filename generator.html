@@ -68,9 +68,10 @@
           required: false,
           unique: false,
           default: "",
+          isImage: "",
         });
         const [generatedCode, setGeneratedCode] = useState({});
-        const [activeTab, setActiveTab] = useState("model");
+        const [activeTab, setActiveTab] = useState("mounting");
         const [includePagination, setIncludePagination] = useState(true);
         const [includeValidation, setIncludeValidation] = useState(true);
         const [selectedModelIndex, setSelectedModelIndex] = useState(-1);
@@ -124,6 +125,7 @@
               required: false,
               unique: false,
               default: "",
+              isImage: "",
             });
           }
         };
@@ -192,6 +194,7 @@
 
                   module.exports = {
                     port: process.env.PORT || 5000,
+                    cloudStore:false,
                     database: {
                       host: process.env.DB_HOST || 'localhost',
                       port: process.env.DB_PORT || 27017,
@@ -265,7 +268,7 @@
                   SMTP_PASS=your_app_password
 
                   # SMS (Twilio)
-                  TWILIO_SID=your_twilio_sid
+                  TWILIO_SID=AC_your_twilio_sid
                   TWILIO_TOKEN=your_twilio_token
                   TWILIO_PHONE=your_twilio_phone_number
 
@@ -915,6 +918,97 @@
 
           return { authController };
         };
+        const generateSaveBinaryFile = () => {
+          return `
+
+const fs = require("fs");
+const path = require("path");
+const { v4: uuid } = require("uuid");
+const {
+  S3Client,
+  PutObjectCommand,
+} = require("@aws-sdk/client-s3");
+
+const config = require("../config"); // assumes config has cloudStore flag
+
+// --- Local Save ---
+const saveLocally = async (file) => {
+  const randomId = uuid();
+  const fileExtension = path.extname(file.originalname);
+  const saveDir = path.join(__dirname, "../views/assets");
+
+  if (!fs.existsSync(saveDir)) {
+    fs.mkdirSync(saveDir, { recursive: true });
+  }
+
+  const imagePath = path.join(saveDir, \`\${randomId}\${fileExtension}\`);
+  fs.writeFileSync(imagePath, file.buffer);
+
+  return \`/assets/\${randomId}\${fileExtension}\`;
+};
+
+// --- S3 Setup ---
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION,
+  endpoint: process.env.AWS_ENDPOINT,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
+});
+
+const uploadToS3 = async (file) => {
+  const fileExtension = path.extname(file.originalname).toLowerCase();
+  const key = \`\${uuid()}\${fileExtension}\`;
+
+  const params = {
+    Bucket: process.env.AWS_S3_BUCKET,
+    Key: key,
+    Body: file.buffer,
+    ContentType: file.mimetype,
+  };
+
+  const command = new PutObjectCommand(params);
+
+  try {
+    await s3Client.send(command);
+    return \`\${process.env.AWS_ENDPOINT_URL || \`https://\${process.env.AWS_S3_BUCKET}.s3.\${process.env.AWS_REGION}.amazonaws.com\`}/\${key}\`;
+  } catch (err) {
+    console.error("Failed to upload file to S3:", err);
+    throw new Error("Failed to upload file");
+  }
+};
+
+// --- Unified Function ---
+const saveBinaryFile = async (file) => {
+  if (!file) throw new Error("No file provided");
+
+  if (config.cloudStore) {
+    return await uploadToS3(file);
+  } else {
+    return await saveLocally(file);
+  }
+};
+
+module.exports = {
+  saveBinaryFile,
+};
+
+  `;
+        };
+
+        const uploadFileMiddleware = () => {
+          return `
+  
+  const multer = require("multer");
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
+
+module.exports = upload;
+
+  `;
+        };
 
         const generateAuthRoutes = () => {
           return `const express = require('express');
@@ -1269,6 +1363,8 @@ module.exports = asyncHandler;
             : model.name + "s";
           const lowerName = model.name.toLowerCase();
           const lowerPlural = pluralName.toLowerCase();
+          // Check if any field is an image
+          const hasImageField = model.fields.some((field) => field.isImage);
 
           let controllerCode = `const ${model.name} = require('../models/${model.name}');\n`;
 
@@ -1280,6 +1376,7 @@ module.exports = asyncHandler;
           controllerCode += `
         const asyncHandler = require("../middlewares/asyncHandleMiddleware");\n\n`;
 
+          controllerCode += `const  saveBinaryFile  = require("../utils/saveBinaryUtils");\n\n`;
           // Create
           controllerCode += `// Create a new ${lowerName}
             exports.create${model.name} = [${
@@ -1296,8 +1393,28 @@ module.exports = asyncHandler;
                     : ""
                 }
 
-                const ${lowerName} = new ${model.name}(req.body);
-                await ${lowerName}.save();
+                                  let fileUrl;
+
+                 ${
+                   hasImageField
+                     ? `
+    if (req.file) {
+      fileUrl = await saveBinaryFile(req.file);
+    }
+          }`
+                     : ""
+                 }
+
+
+    const ${lowerName} = new ${model.name}({
+      ...req.body,
+      ${
+        hasImageField
+          ? `${model.fields.find((f) => f.isImage).name}: fileUrl || undefined,`
+          : ""
+      }
+    });
+                    await ${lowerName}.save();
                 res.successResponse(${lowerName}, '${
             model.name
           } created successfully');
@@ -1352,11 +1469,23 @@ module.exports = asyncHandler;
                     : ""
                 }
 
-                const ${lowerName} = await ${model.name}.findByIdAndUpdate(
-                    req.params.id,
-                    req.body,
-                    { new: true, runValidators: true }
-                );
+                  let updateData = { ...req.body };
+
+    ${
+      hasImageField
+        ? `
+    if (req.file) {
+      const fileUrl = await saveBinaryFile(req.file);
+      updateData.${model.fields.find((f) => f.isImage).name} = fileUrl;
+    }`
+        : ""
+    }
+
+    const ${lowerName} = await ${model.name}.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true }
+    );
 
                 if (!${lowerName}) return res.notFound('${
             model.name
@@ -1386,45 +1515,36 @@ module.exports = asyncHandler;
             routesCode += `const { authenticateToken } = require('../middlewares/authMiddleware');\n`;
           }
 
-          routesCode += `\n`;
-          routesCode += `// ${model.name} routes\n`;
+          const hasImageField = model.fields.some((field) => field.isImage);
 
-          if (includeAuth) {
-            routesCode += `router.post('/', authenticateToken, ${model.name.toLowerCase()}Controller.create${
-              model.name
-            });\n`;
-            routesCode += `router.get('/', authenticateToken, ${model.name.toLowerCase()}Controller.get${
-              model.name
-            }s);\n`;
-            routesCode += `router.get('/:id', authenticateToken, ${model.name.toLowerCase()}Controller.get${
-              model.name
-            }ById);\n`;
-            routesCode += `router.put('/:id', authenticateToken, ${model.name.toLowerCase()}Controller.update${
-              model.name
-            });\n`;
-            routesCode += `router.delete('/:id', authenticateToken, ${model.name.toLowerCase()}Controller.delete${
-              model.name
-            });\n`;
-          } else {
-            routesCode += `router.post('/', ${model.name.toLowerCase()}Controller.create${
-              model.name
-            });\n`;
-            routesCode += `router.get('/', ${model.name.toLowerCase()}Controller.get${
-              model.name
-            }s);\n`;
-            routesCode += `router.get('/:id', ${model.name.toLowerCase()}Controller.get${
-              model.name
-            }ById);\n`;
-            routesCode += `router.put('/:id', ${model.name.toLowerCase()}Controller.update${
-              model.name
-            });\n`;
-            routesCode += `router.delete('/:id', ${model.name.toLowerCase()}Controller.delete${
-              model.name
-            });\n`;
+          if (hasImageField) {
+            routesCode += `const upload = require("../middlewares/multer");\n`;
           }
 
-          routesCode += `\n`;
-          routesCode += `module.exports = router;\n`;
+          routesCode += `\n// ${model.name} routes\n`;
+
+          const authPrefix = includeAuth ? "authenticateToken, " : "";
+          const imageMiddleware = hasImageField
+            ? `upload.single("${model.fields.find((f) => f.isImage).name}"), `
+            : "";
+
+          routesCode += `router.post('/', ${authPrefix}${imageMiddleware}${model.name.toLowerCase()}Controller.create${
+            model.name
+          });\n`;
+          routesCode += `router.get('/', ${authPrefix}${model.name.toLowerCase()}Controller.get${
+            model.name
+          }s);\n`;
+          routesCode += `router.get('/:id', ${authPrefix}${model.name.toLowerCase()}Controller.get${
+            model.name
+          }ById);\n`;
+          routesCode += `router.put('/:id', ${authPrefix}${imageMiddleware}${model.name.toLowerCase()}Controller.update${
+            model.name
+          });\n`;
+          routesCode += `router.delete('/:id', ${authPrefix}${model.name.toLowerCase()}Controller.delete${
+            model.name
+          });\n`;
+
+          routesCode += `\nmodule.exports = router;\n`;
 
           return routesCode;
         };
@@ -1555,6 +1675,8 @@ module.exports = asyncHandler;
             errorHandler: generateerrorHandler(),
             asyncHandleMiddleware: generateasyncHandleMiddleware(),
             authValidators,
+            multer: uploadFileMiddleware(),
+            saveBinaryFile: generateSaveBinaryFile(),
           });
         };
 
@@ -1646,6 +1768,10 @@ module.exports = asyncHandler;
             }
           }
 
+          const viewsFolder = zip.folder("views");
+
+          viewsFolder.folder("assets");
+
           // Add middlewares
           const middlewaresFolder = zip.folder("middlewares");
           middlewaresFolder.file(
@@ -1658,6 +1784,7 @@ module.exports = asyncHandler;
             generatedCode.asyncHandleMiddleware
           );
           middlewaresFolder.file("errorHandler.js", generatedCode.errorHandler);
+          middlewaresFolder.file("multer.js", generatedCode.multer);
 
           // Add auth middleware if enabled
           if (includeAuth) {
@@ -1673,6 +1800,8 @@ module.exports = asyncHandler;
           utilsFolder.file("emailUtils.js", generatedCode.utils.emailUtils);
           utilsFolder.file("smsUtils.js", generatedCode.utils.smsUtils);
           utilsFolder.file("otpUtils.js", generatedCode.utils.otpUtils);
+                    utilsFolder.file("saveBinaryUtils.js", generatedCode.saveBinaryFile);
+
 
           // Add environment files
           zip.file(".env.development", generatedCode.envFiles.envDevelopment);
@@ -1694,25 +1823,38 @@ module.exports = asyncHandler;
     "test": "NODE_ENV=test jest"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.637.0",       
     "bcrypt": "^5.1.1",
+    "body-parser": "^1.20.2",              
     "compression": "^1.7.4",
+    "cookie-parser": "^1.4.6",              
     "cors": "^2.8.5",
+    "dayjs": "^1.11.10",                  
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
+    "express-rate-limit": "^7.2.0",        
     "express-validator": "^7.0.1",
     "helmet": "^7.0.0",
+    "http-errors": "^2.0.0",              
+    "joi": "^17.11.0",                    
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^7.5.0",
     "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",          
     "nodemailer": "^6.9.7",
-    "twilio": "^4.18.1"
+    "pino": "^8.19.0",                    
+    "twilio": "^4.18.1",
+    "uuid": "^9.0.1",                      
+    "winston": "^3.11.0"                   
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",                 
     "jest": "^29.7.0",
     "nodemon": "^3.0.1",
     "supertest": "^6.3.3"
   }
 }
+
 `;
           zip.file("package.json", packageJson);
 
@@ -2180,6 +2322,25 @@ module.exports = asyncHandler;
                       </label>
                     </div>
 
+                    <div className="flex items-end">
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={newField.isImage}
+                          onChange={(e) =>
+                            setNewField({
+                              ...newField,
+                              isImage: e.target.checked,
+                            })
+                          }
+                          className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">
+                          Is Image
+                        </span>
+                      </label>
+                    </div>
+
                     {/* Add Button */}
                     <div className="flex items-end">
                       <button
@@ -2240,6 +2401,9 @@ module.exports = asyncHandler;
                                 Default
                               </th>
                               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                Is Image
+                              </th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                                 Action
                               </th>
                             </tr>
@@ -2257,6 +2421,9 @@ module.exports = asyncHandler;
                                 </td>
                                 <td className="px-4 py-2">
                                   {field.default || "-"}
+                                </td>
+                                <td className="px-4 py-2">
+                                  {field.isImage ? "Yes" : "No"}
                                 </td>
                                 <td className="px-4 py-2">
                                   <button

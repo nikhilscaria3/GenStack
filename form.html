@@ -141,6 +141,9 @@
         const [fieldRequired, setFieldRequired] = useState(false);
         const [fieldOptions, setFieldOptions] = useState([""]);
 
+        const [importModalOpen, setImportModalOpen] = useState(false);
+        const [importJson, setImportJson] = useState("");
+
         const [formData, setFormData] = useState({});
         const [formErrors, setFormErrors] = useState({});
         const [notification, setNotification] = useState("");
@@ -180,6 +183,36 @@
         const showNotification = (message, type = "success") => {
           setNotification({ message, type });
           setTimeout(() => setNotification(""), 3000);
+        };
+
+        const handleImportJson = () => {
+          try {
+            const parsedFields = JSON.parse(importJson);
+
+            // Validate the imported data structure
+            if (
+              Array.isArray(parsedFields) &&
+              parsedFields.every(
+                (field) =>
+                  field.type && field.label && field.placeholder !== undefined
+              )
+            ) {
+              setFields(parsedFields);
+              setImportModalOpen(false);
+              setImportJson("");
+              showNotification("Form imported successfully!");
+            } else {
+              showNotification(
+                "Invalid form structure. Please check your JSON.",
+                "error"
+              );
+            }
+          } catch (error) {
+            showNotification(
+              "Invalid JSON format. Please check your input.",
+              "error"
+            );
+          }
         };
 
         const validateField = (fieldName, value, fieldType, fields) => {
@@ -240,7 +273,12 @@
             required: fieldRequired,
             options:
               fieldType === "select"
-                ? fieldOptions.filter((opt) => opt.trim() !== "")
+                ? fieldOptions
+                    .filter((opt) => opt.trim() !== "")
+                    .map((opt) => ({
+                      label: opt,
+                      value: opt.toLowerCase().replace(/\s+/g, "_"),
+                    }))
                 : [],
           };
 
@@ -271,7 +309,11 @@
           setFieldLabel(field.label);
           setFieldPlaceholder(field.placeholder);
           setFieldRequired(field.required);
-          setFieldOptions(field.type === "select" ? field.options : [""]);
+          setFieldOptions(
+            field.type === "select"
+              ? field.options.map((opt) => opt.label || opt)
+              : [""]
+          );
           setEditingIndex(index);
         };
 
@@ -406,7 +448,7 @@
                 const optionsCode = field.options
                   .map(
                     (option) =>
-                      `                <option value="${option}">${option}</option>`
+                      `                <option value="${option.value}">${option.label}</option>`
                   )
                   .join("\n");
 
@@ -631,12 +673,18 @@ ${optionsCode}
                 Create highly customizable React forms with a simple GUI
               </p>
             </header>
-
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
               <div className="bg-white rounded-xl shadow-lg p-6">
                 <h2 className="text-2xl font-semibold text-gray-800 mb-6 pb-3 border-b border-gray-200">
                   Form Builder
                 </h2>
+
+                <button
+                  onClick={() => setImportModalOpen(true)}
+                  className="mt-2 py-2 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                >
+                  Import JSON
+                </button>
 
                 <div className="mb-6">
                   <label
@@ -891,8 +939,8 @@ ${optionsCode}
                           >
                             <option value="">Select an option</option>
                             {field.options.map((option, optIndex) => (
-                              <option key={optIndex} value={option}>
-                                {option}
+                              <option key={optIndex} value={option.value}>
+                                {option.label}
                               </option>
                             ))}
                           </select>
@@ -940,7 +988,6 @@ ${optionsCode}
                 </form>
               </div>
             </div>
-
             <div className="bg-gray-800 rounded-xl shadow-lg p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-semibold text-white">
@@ -962,7 +1009,37 @@ ${optionsCode}
                 </code>
               </pre>
             </div>
-
+            // Add this modal component at the end of your return statement
+            (before the notification)
+            {importModalOpen && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                  <h3 className="text-lg font-medium text-gray-800 mb-4">
+                    Import Form JSON
+                  </h3>
+                  <textarea
+                    value={importJson}
+                    onChange={(e) => setImportJson(e.target.value)}
+                    placeholder="Paste your form JSON here..."
+                    className="w-full h-40 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <div className="flex justify-end space-x-3 mt-4">
+                    <button
+                      onClick={() => setImportModalOpen(false)}
+                      className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleImportJson}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    >
+                      Import
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
             {notification && (
               <div
                 className={`notification fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg ${
